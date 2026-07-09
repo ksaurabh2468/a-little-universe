@@ -200,7 +200,8 @@
   .polas{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:18px}
   .pola{background:#fbf7ef;padding:10px 10px 34px;border-radius:6px;box-shadow:var(--shadow);transform:rotate(var(--rot,-2deg));position:relative}
   .pola .ph{aspect-ratio:1;border-radius:3px;background:
-    linear-gradient(135deg,var(--pa,#9B6BFF),var(--pb,#FF6B9D));display:grid;place-items:center;color:rgba(255,255,255,.85);font-size:26px}
+    linear-gradient(135deg,var(--pa,#9B6BFF),var(--pb,#FF6B9D));display:grid;place-items:center;color:rgba(255,255,255,.85);font-size:26px;overflow:hidden}
+  .pola .ph img{width:100%;height:100%;object-fit:cover;display:block}
   .pola span{position:absolute;bottom:8px;left:0;right:0;text-align:center;color:#4a4460;font-size:13px;font-family:var(--display)}
 
   /* ---------- Finale ---------- */
@@ -463,11 +464,11 @@ const CONFIG = {
   // Finale
   finaleMsg: "The world knows you as Abhilasha. I got the better deal — I get Momo. Here's to another year of you being ridiculously, unfairly great at being you. Happy birthday.",
 
-  // Polaroid captions (photos dropped in later)
+  // Polaroid captions — src set = real photo, otherwise falls back to gradient + emoji
   polaroids: [
-    { cap:"us, probably", emoji:"🌆" },
-    { cap:"that one day", emoji:"🎡" },
-    { cap:"caught laughing", emoji:"😂" },
+    { cap:"mirror selfie", emoji:"🪞", src:"photos/polaroid-3.jpg" },
+    { cap:"that afternoon", emoji:"☀️", src:"photos/polaroid-2.jpg" },
+    { cap:"caught looking", emoji:"✨", src:"photos/polaroid-1.jpg" },
     { cap:"golden hour", emoji:"🌅" },
     { cap:"the good chaos", emoji:"🎉" },
     { cap:"add yours", emoji:"➕" }
@@ -726,7 +727,7 @@ const Cake=(function(){
   CONFIG.polaroids.forEach((p,i)=>{
     const d=document.createElement("div"); d.className="pola"; d.style.setProperty("--rot",((i%2?1:-1)*(1+Math.random()*3)).toFixed(1)+"deg");
     d.style.setProperty("--pa",grads[i%grads.length][0]); d.style.setProperty("--pb",grads[i%grads.length][1]);
-    d.innerHTML=`<div class="ph">${p.emoji}</div><span>${p.cap}</span>`;
+    d.innerHTML=`<div class="ph">${p.src?`<img src="${p.src}" alt="${p.cap}" loading="lazy">`:p.emoji}</div><span>${p.cap}</span>`;
     wall.appendChild(d);
   });
 })();

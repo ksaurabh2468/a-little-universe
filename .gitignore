@@ -1,1 +1,6 @@
 .vercel
+
+# Private couple photos — kept local only, never committed to this public repo
+# (see CLAUDE.md privacy note; these belong behind the future encrypted gate)
+photos/couple-*.jpg
+photos/couple/

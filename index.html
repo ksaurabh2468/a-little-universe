@@ -218,6 +218,23 @@
   .scene-place{font-family:var(--display);color:var(--gold);font-size:13.5px;letter-spacing:.02em;margin:-2px 0 14px}
   .scene-place .sp-vibe{color:var(--muted);font-style:italic}
 
+  /* ---------- Scene transition wipe ("stepping into the place") ---------- */
+  #sceneWipe{
+    position:fixed;inset:0;z-index:250;pointer-events:none;display:grid;place-items:center;
+    background:radial-gradient(closest-side, rgba(255,226,170,.96), rgba(255,138,88,.94) 55%, rgba(20,9,18,.98) 100%);
+    clip-path:circle(0% at 50% 50%);transition:clip-path .32s cubic-bezier(.4,0,.2,1);
+  }
+  .wipe-label{
+    font-family:var(--display);font-size:clamp(19px,4.4vw,28px);color:#2a1206;text-align:center;padding:0 26px;
+    opacity:0;transform:translateY(6px);transition:opacity .2s ease,transform .2s ease;
+    text-shadow:0 2px 14px rgba(255,255,255,.4);
+  }
+  #sceneWipe.wipe-label-on .wipe-label{opacity:1;transform:translateY(0)}
+  @media (prefers-reduced-motion: reduce){
+    #sceneWipe{transition:none}
+    .wipe-label{transition:none}
+  }
+
   /* ---------- Wrapped ---------- */
   .wcard{
     border-radius:26px;padding:34px 26px;min-height:340px;display:flex;flex-direction:column;
@@ -262,11 +279,34 @@
 
   /* ---------- Machine ---------- */
   .machine{border:1px solid var(--line);background:linear-gradient(180deg,var(--panel-2),var(--panel));border-radius:24px;padding:26px;text-align:center}
+  .machine-row{display:flex;align-items:flex-start;gap:16px;text-align:left}
   .readout{
-    min-height:120px;display:grid;place-items:center;padding:22px;border-radius:16px;
-    background:#0c0a24;border:1px dashed var(--line);font-size:20px;line-height:1.4;color:var(--ink)
+    flex:1;min-width:0;min-height:120px;display:grid;place-items:center;padding:22px;border-radius:16px;
+    background:#0c0a24;border:1px dashed var(--line);font-size:20px;line-height:1.4;color:var(--ink);text-align:center
   }
   .readout .small{color:var(--gold);font-size:12px;letter-spacing:.2em;text-transform:uppercase;display:block;margin-bottom:8px}
+
+  /* ---------- Lever apparatus ---------- */
+  .lever-unit{flex:0 0 auto;width:76px;display:flex;flex-direction:column;align-items:center;gap:8px;padding-top:6px}
+  .lever-track{
+    position:relative;width:14px;height:104px;border-radius:8px;
+    background:linear-gradient(180deg,#1a1730,#0b0921);border:1px solid var(--line);
+    box-shadow:inset 0 3px 8px rgba(0,0,0,.65);
+  }
+  .lever-mount{width:44px;height:12px;border-radius:8px;background:linear-gradient(180deg,#2c2a52,#171633);border:1px solid var(--line);box-shadow:0 3px 6px rgba(0,0,0,.4)}
+  .lever-hint{font-size:11px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+  .lever-knob{
+    position:absolute;left:50%;top:0;width:36px;height:36px;border-radius:50%;padding:0;
+    transform:translate(-50%,0);cursor:grab;touch-action:none;-webkit-user-select:none;user-select:none;
+    background:radial-gradient(circle at 32% 26%, #ff9d9d, #e8384f 48%, #9c0f26 100%);
+    border:1px solid rgba(255,255,255,.28);
+    box-shadow:0 6px 14px rgba(0,0,0,.55), inset 0 2px 4px rgba(255,255,255,.35);
+  }
+  .lever-knob:active,.lever-knob.grabbing{cursor:grabbing}
+  .lever-knob:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+  .lever-knob.idle{animation:leverBob 2.6s ease-in-out infinite}
+  @keyframes leverBob{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,5px)}}
+  @media (prefers-reduced-motion: reduce){ .lever-knob.idle{animation:none} }
 
   /* ---------- Polaroid wall ---------- */
   .polas{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:18px}
@@ -693,6 +733,12 @@
   #stickerPop.show{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
   #stickerPop img{display:block;height:132px;width:auto;filter:drop-shadow(0 14px 30px rgba(0,0,0,.55))}
 
+  /* ---------- per-scene avatar badge (real illustrated avatar, a different one per page) ---------- */
+  .scene-avatar-badge{position:fixed;top:16px;right:16px;z-index:5;width:54px;height:54px;
+    border-radius:50%;overflow:hidden;border:2px solid var(--line);box-shadow:var(--shadow);
+    animation:scenebadgein .4s cubic-bezier(.2,.8,.2,1.2)}
+  @keyframes scenebadgein{from{opacity:0;transform:scale(.6) translateY(-8px)}to{opacity:1;transform:none}}
+
   @media (prefers-reduced-motion: reduce){
     *{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.05ms!important}
   }
@@ -723,6 +769,7 @@
 <canvas id="confetti" aria-hidden="true"></canvas>
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="placeBanner" role="status" aria-live="polite"></div>
+<div id="sceneWipe" aria-hidden="true"><div class="wipe-label" id="wipeLabel"></div></div>
 <div id="lightbox" aria-hidden="true"><button id="lightboxClose" aria-label="Close">✕</button><figure><img id="lightboxImg" alt=""><figcaption id="lightboxCap"></figcaption></figure></div>
 <div id="stickerPop" aria-hidden="true"><img id="stickerPopImg" alt=""></div>
 <div id="avatarCompanion" aria-hidden="true" role="button" tabindex="0" aria-label="Say hi to Momo's avatar"><span class="la-ring"></span></div>
@@ -813,14 +860,47 @@
 <section class="scene" id="scene-game">
   <button class="back" data-back>✓ Done</button>
   <div class="scene-inner">
-    <h2>Cupcake Catch 🧁</h2>
-    <p class="lead">Move to catch the cupcakes. Dodge the bombs. Reach <b id="goalTxt">12</b> to unlock a secret.</p>
-    <div class="gamewrap">
-      <canvas id="game" width="760" height="440"></canvas>
-      <div class="gamebar">
-        <span>Score: <b id="score">0</b> / <b id="goal">12</b></span>
-        <span>Lives: <b id="lives">3</b></span>
-        <button class="btn" id="gameBtn">Start</button>
+    <h2>The Arcade 🕹️</h2>
+    <p class="lead">Three little games. Beat one — or all three.</p>
+    <div class="arcade-tabs" role="tablist">
+      <button class="arc-tab on" data-arc="cup" role="tab">🧁 Cupcake Catch</button>
+      <button class="arc-tab" data-arc="bowl" role="tab">🎳 Bowling</button>
+      <button class="arc-tab" data-arc="puck" role="tab">🏒 Air Hockey</button>
+    </div>
+
+    <div class="arc-panel on" data-panel="cup">
+      <p class="lead arc-sub">Move to catch the cupcakes. Dodge the bombs. Reach <b id="goalTxt">12</b> to unlock a secret.</p>
+      <div class="gamewrap">
+        <canvas id="game" width="760" height="440"></canvas>
+        <div class="gamebar">
+          <span>Score: <b id="score">0</b> / <b id="goal">12</b></span>
+          <span>Lives: <b id="lives">3</b></span>
+          <button class="btn" id="gameBtn">Start</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="arc-panel" data-panel="bowl">
+      <p class="lead arc-sub">Drag left/right to aim, release to bowl. Knock down all 10 for a strike 🎳</p>
+      <div class="gamewrap">
+        <canvas id="bowl" width="760" height="440"></canvas>
+        <div class="gamebar">
+          <span>Pins down: <b id="bowlDown">0</b> / 10</span>
+          <span>Best: <b id="bowlBest">0</b></span>
+          <button class="btn" id="bowlBtn">New rack</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="arc-panel" data-panel="puck">
+      <p class="lead arc-sub">Move your paddle with mouse/finger. First to 5 goals wins 🏒</p>
+      <div class="gamewrap">
+        <canvas id="puck" width="760" height="440"></canvas>
+        <div class="gamebar">
+          <span>You: <b id="puckYou">0</b></span>
+          <span>Rival: <b id="puckAI">0</b></span>
+          <button class="btn" id="puckBtn">Start</button>
+        </div>
       </div>
     </div>
   </div>
@@ -845,9 +925,16 @@
     <h2>The Compliment Machine 🎰</h2>
     <p class="lead">Pull the lever whenever you need a boost. It never runs out.</p>
     <div class="machine">
-      <div class="readout" id="readout"><div><span class="small">Ready</span>Pull the lever ↓</div></div>
-      <div style="height:18px"></div>
-      <button class="btn primary" id="lever">Pull the lever 🎯</button>
+      <div class="machine-row">
+        <div class="readout" id="readout"><div><span class="small">Ready</span>Pull the lever ↓</div></div>
+        <div class="lever-unit">
+          <div class="lever-track" id="leverTrack">
+            <button type="button" class="lever-knob idle" id="lever" aria-label="Pull the lever"></button>
+          </div>
+          <div class="lever-mount"></div>
+          <span class="lever-hint" aria-hidden="true">↓ pull</span>
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -1005,6 +1092,12 @@ const CONFIG = {
   // Secret unlocked by the game
   gameSecret: "Secret unlocked 🔓 — okay Momo, you actually beat it. Tell me what you want and consider it done — I mean it.",
 
+  // Bowling — strike message
+  bowlingWin: "STRIKE! 🎳 Clean sweep, all ten. You've got aim AND luck — dangerous combo, Momo.",
+
+  // Air hockey — win message
+  hockeyWin: "Game! 🏒 You beat me fair and square. I'd let you win… but you didn't even need it.",
+
   // Cake wish reveal
   cakeReveal: "Wish received 💫 Whatever it was, I hope it comes true — and if it needs help getting there, I'm in.",
 
@@ -1020,11 +1113,11 @@ const CONFIG = {
   spotify: "",
   montageAudio: "",     // e.g. "audio/theme-clip.mp3" — a ~30s clip that loops under the film
 
-  // Site-wide ambient background music — starts on unlock (gift-box tap / passcode), loops
-  // quietly under the whole hub, auto-pauses on the Mixtape/Cake scenes, and can be muted via
-  // the floating toggle. Needs an instrumental loop (~1-3 min) in audio/ — leave "" to skip.
-  bgMusic: "audio/ambient-loop.wav",
-  bgMusicVolume: 0.28,
+  // Site-wide background music — starts on unlock (gift-box tap / passcode), loops under the
+  // whole hub, auto-pauses on the Mixtape/Cake scenes, and can be muted via the floating
+  // toggle. Leave "" to skip (falls back to no music, toggle stays hidden).
+  bgMusic: "audio/dusk-till-dawn.mp3",
+  bgMusicVolume: 0.35,
 
   // Mixtape volumes — the full song list split across multiple Spotify playlists (one
   // embed can't hold it all). Shown as a linked list beneath the tracklist. Sequenced to
@@ -2319,6 +2412,47 @@ $(".planet").addEventListener("click",()=>{
   if(planetTaps>=6){ eggFound=true; Confetti.burst(160); toast(CONFIG.easterEgg,6000); }
 });
 
+/* ============ SCENE TRANSITION WIPE ("stepping into the place") ============
+   Bridges the hub/drive → scene swap with a warm iris sweep so opening a stop
+   reads as arriving and stepping in, rather than a flat pop-in. Additive only:
+   openScene()/closeScene() below still own every per-scene init/teardown call —
+   this module just wraps *when* the DOM mutation (mount/unmount) happens. */
+const SceneWipe=(function(){
+  const el=$("#sceneWipe"), labelEl=$("#wipeLabel");
+  if(!el) return { enter:(txt,mount)=>mount(), exit:(unmount)=>unmount() };
+  let busy=false;
+  function setLabel(text){ if(labelEl) labelEl.textContent=text||""; }
+  function setClip(value,ms){ el.style.transitionDuration=ms+"ms"; requestAnimationFrame(()=>{ el.style.clipPath=value; }); }
+  function enter(destText, mountFn){
+    if(reduceMotion || busy){ mountFn(); return; }
+    busy=true;
+    setLabel(destText);
+    el.style.pointerEvents="auto";
+    setClip("circle(150% at 50% 50%)",320);
+    setTimeout(()=>{
+      mountFn();
+      el.classList.add("wipe-label-on");
+      setTimeout(()=>{
+        setClip("circle(0% at 50% 50%)",360);
+        setTimeout(()=>{ el.classList.remove("wipe-label-on"); el.style.pointerEvents="none"; busy=false; },360);
+      },40);
+    },320);
+  }
+  function exit(unmountFn){
+    if(reduceMotion || busy){ unmountFn(); return; }
+    busy=true;
+    setLabel("");
+    el.style.pointerEvents="auto";
+    setClip("circle(150% at 50% 50%)",210);
+    setTimeout(()=>{
+      unmountFn();
+      setClip("circle(0% at 50% 50%)",210);
+      setTimeout(()=>{ el.style.pointerEvents="none"; busy=false; },210);
+    },210);
+  }
+  return { enter, exit };
+})();
+
 /* ============ SCENE ROUTER ============ */
 function openScene(id){
   const s=document.getElementById("scene-"+id);
@@ -2327,30 +2461,36 @@ function openScene(id){
      top of this page; instead show THIS stop's own place inside the page. */
   const pb=document.getElementById("placeBanner"); if(pb) pb.classList.remove("show");
   const cd=CARDS.find(c=>c.id===id);
-  if(cd && cd.place){
-    let badge=s.querySelector(".scene-place");
-    if(!badge){
-      badge=document.createElement("div"); badge.className="scene-place";
-      const h2=s.querySelector("h2"); if(h2) h2.insertAdjacentElement("afterend", badge);
+  const destLabel = (cd && cd.place) ? ((cd.ico?cd.ico+"  ":"")+"📍 "+cd.place) : (s.querySelector("h2")?s.querySelector("h2").textContent:"");
+  SceneWipe.enter(destLabel, ()=>{
+    if(cd && cd.place){
+      let badge=s.querySelector(".scene-place");
+      if(!badge){
+        badge=document.createElement("div"); badge.className="scene-place";
+        const h2=s.querySelector("h2"); if(h2) h2.insertAdjacentElement("afterend", badge);
+      }
+      if(badge) badge.innerHTML="📍 "+cd.place+(cd.vibe?" <span class='sp-vibe'>· "+cd.vibe+"</span>":"");
     }
-    if(badge) badge.innerHTML="📍 "+cd.place+(cd.vibe?" <span class='sp-vibe'>· "+cd.vibe+"</span>":"");
-  }
-  s.classList.add("on"); s.scrollTop=0;
-  if(id==="game") Game.reset();
-  if(id==="cake") Cake.draw();
-  if(id==="scratch") Scratch.reset();
-  if(id==="wheel") Wheel.draw();
-  if(id==="montage") Montage.reset();
-  if(id==="finale") LiveAvatar.mountFinale();
-  if(id==="mixtape" || id==="cake") AmbientMusic.duck();
+    s.classList.add("on"); s.scrollTop=0;
+    if(id==="game"){ if(window.__arcSelect) window.__arcSelect(typeof arcCurrent==="function"?arcCurrent():"cup"); else Game.reset(); }
+    if(id==="cake") Cake.draw();
+    if(id==="scratch") Scratch.reset();
+    if(id==="wheel") Wheel.draw();
+    if(id==="montage") Montage.reset();
+    if(id==="finale") LiveAvatar.mountFinale();
+    if(id==="mixtape" || id==="cake") AmbientMusic.duck();
+  });
 }
 function closeScene(s){
   if(!s) return;
-  s.classList.remove("on");
-  if(s.id==="scene-mixtape") Mixtape.reset();
-  if(s.id==="scene-montage") Montage.stop();
-  if(s.id==="scene-mixtape" || s.id==="scene-cake") AmbientMusic.unduck();
-  Journey.markVisited(s.id.replace("scene-",""));
+  SceneWipe.exit(()=>{
+    s.classList.remove("on");
+    if(s.id==="scene-game"){ if(typeof Bowling!=="undefined") Bowling.stop(); if(typeof AirHockey!=="undefined") AirHockey.stop(); }
+    if(s.id==="scene-mixtape") Mixtape.reset();
+    if(s.id==="scene-montage") Montage.stop();
+    if(s.id==="scene-mixtape" || s.id==="scene-cake") AmbientMusic.unduck();
+    Journey.markVisited(s.id.replace("scene-",""));
+  });
 }
 $$("[data-back]").forEach(b=>b.addEventListener("click",e=>closeScene(e.target.closest(".scene"))));
 addEventListener("keydown",e=>{
@@ -2447,6 +2587,247 @@ const Game=(function(){
   return { reset, start };
 })();
 
+/* ============ GAME: Bowling ============ */
+const Bowling=(function(){
+  const cv=$("#bowl"); if(!cv) return { reset(){}, stop(){} };
+  const g=cv.getContext("2d"); const W=cv.width,H=cv.height;
+  const BR=15, PR=10;                 // ball radius, pin radius
+  let ball, pins, aim, dir, phase, raf, best=0, downCount=0, gen=0, settleT=0;
+  let ac; function tone(f,d,v){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();const o=ac.createOscillator(),gn=ac.createGain();o.frequency.value=f;o.type="triangle";o.connect(gn);gn.connect(ac.destination);gn.gain.setValueAtTime(v||.06,ac.currentTime);gn.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+d);o.start();o.stop(ac.currentTime+d);}catch(e){}}
+  function rack(){
+    pins=[]; const cx=W/2, topY=70, gap=30;
+    // standard 10-pin triangle, apex toward the bowler
+    for(let row=0;row<4;row++){
+      for(let i=0;i<=row;i++){
+        pins.push({x:cx+(i-row/2)*gap, y:topY+row*gap*0.9, vx:0, vy:0, down:false, a:0});
+      }
+    }
+  }
+  function reset(){
+    stop();                                  // stop() bumps gen, killing any orphan loop
+    rack(); downCount=0;
+    ball={x:W/2, y:H-40, vx:0, vy:0, rolling:false};
+    aim=0; dir=1; phase="aim";
+    $("#bowlDown").textContent=0; $("#bowlBtn").textContent="Bowl »";
+    draw();
+    loop(gen);
+  }
+  function launch(){
+    if(phase!=="aim")return;
+    phase="roll"; ball.rolling=true;
+    const ang=aim*0.5;                          // aim in radians, gentle
+    const sp=13;
+    ball.vx=Math.sin(ang)*sp; ball.vy=-Math.cos(ang)*sp;
+    tone(220,.12);
+  }
+  function collide(a,b,ra,rb,push){
+    const dx=b.x-a.x, dy=b.y-a.y; let d=Math.hypot(dx,dy); if(d===0)d=0.01;
+    if(d<ra+rb){
+      const nx=dx/d, ny=dy/d;
+      b.vx+=nx*push; b.vy+=ny*push;
+      // separate
+      const ov=(ra+rb-d);
+      b.x+=nx*ov*0.6; b.y+=ny*ov*0.6;
+      return true;
+    }
+    return false;
+  }
+  function update(){
+    if(phase==="aim"){ aim+=dir*0.02; if(aim>1){aim=1;dir=-1;} if(aim<-1){aim=-1;dir=1;} return; }
+    if(phase==="roll"){
+      ball.x+=ball.vx; ball.y+=ball.vy;
+      // wall bounce (gutters)
+      if(ball.x<BR){ball.x=BR;ball.vx*=-.5;} if(ball.x>W-BR){ball.x=W-BR;ball.vx*=-.5;}
+      // ball -> pins
+      for(const p of pins){ if(!p.down && collide(ball,p,BR,PR,6)){ if(Math.abs(p.vx)+Math.abs(p.vy)>1.5){} } }
+      // pin -> pin + pin motion
+      for(const p of pins){
+        if(p.vx||p.vy){
+          p.x+=p.vx; p.y+=p.vy; p.vx*=0.97; p.vy*=0.97; p.a+=0.3;
+          for(const q of pins){ if(q!==p && !q.down) collide(p,q,PR,PR,2.4); }
+          if(!p.down && (Math.abs(p.vx)+Math.abs(p.vy))>0.4) p.down=true;
+        }
+      }
+      // ball left the top / stopped
+      if(ball.y<-BR || (ball.rolling && ball.y<H*0.35 && Math.abs(ball.vy)<0.1)){ settle(); }
+      if(ball.y<-40) settle();
+    }
+  }
+  function settle(){
+    if(phase!=="roll")return;
+    // let pins coast a touch, then count
+    phase="count";
+    const myGen=gen;
+    settleT=setTimeout(()=>{
+      if(myGen!==gen) return;              // a reset happened while we waited — abort
+      downCount=pins.filter(p=>p.down).length;
+      $("#bowlDown").textContent=downCount;
+      if(downCount>best){ best=downCount; $("#bowlBest").textContent=best; }
+      if(downCount>=10){ strike(); }
+      else { $("#bowlBtn").textContent="New rack ⟲"; phase="done"; tone(180,.2); }
+    },650);
+  }
+  function strike(){
+    phase="win"; Confetti.burst(150);
+    for(let i=0;i<6;i++) setTimeout(()=>tone(440+i*80,.12,.05), i*70);
+    g.fillStyle="rgba(11,10,31,.86)"; g.fillRect(0,0,W,H);
+    g.fillStyle="#FFD166"; g.font="bold 34px system-ui"; g.textAlign="center"; g.fillText("STRIKE! 🎳",W/2,H/2-22);
+    g.fillStyle="#F5F3FF"; g.font="16px system-ui"; wrap(CONFIG.bowlingWin||"Strike!",W/2,H/2+14,W-90,22);
+    $("#bowlBtn").textContent="Bowl again ⟲";
+  }
+  function wrap(t,cx,cy,maxW,lh){const words=t.split(" ");let line="",y=cy;for(const w of words){const test=line+w+" ";if(g.measureText(test).width>maxW&&line){g.fillText(line,cx,y);line=w+" ";y+=lh;}else line=test;}g.fillText(line,cx,y);}
+  function draw(){
+    // lane
+    g.fillStyle="#0c0a24"; g.fillRect(0,0,W,H);
+    g.fillStyle="#17123a"; g.fillRect(W*0.14,0,W*0.72,H);
+    g.strokeStyle="rgba(155,107,255,.18)"; g.lineWidth=2;
+    for(let i=1;i<7;i++){ g.beginPath(); g.moveTo(W*0.14+i*(W*0.72/7),0); g.lineTo(W*0.14+i*(W*0.72/7),H); g.stroke(); }
+    // foul line
+    g.strokeStyle="rgba(255,209,102,.4)"; g.beginPath(); g.moveTo(W*0.14,H-64); g.lineTo(W*0.86,H-64); g.stroke();
+    // pins
+    for(const p of pins){
+      g.save(); g.translate(p.x,p.y); g.rotate(p.down?p.a:0); g.globalAlpha=p.down?0.45:1;
+      g.fillStyle="#F5F3FF"; g.beginPath(); g.ellipse(0,0,PR*0.8,PR,0,0,7); g.fill();
+      g.fillStyle="#FF6B9D"; g.fillRect(-PR*0.8,-PR*0.35,PR*1.6,3);
+      g.restore();
+    }
+    // aim guide
+    if(phase==="aim"){
+      const ang=aim*0.5;
+      g.strokeStyle="rgba(78,205,196,.6)"; g.lineWidth=2; g.setLineDash([6,7]);
+      g.beginPath(); g.moveTo(ball.x,ball.y); g.lineTo(ball.x+Math.sin(ang)*220, ball.y-Math.cos(ang)*220); g.stroke(); g.setLineDash([]);
+    }
+    // ball
+    const grd=g.createRadialGradient(ball.x-5,ball.y-5,2,ball.x,ball.y,BR); grd.addColorStop(0,"#6ee7de"); grd.addColorStop(1,"#2aa79d");
+    g.fillStyle=grd; g.beginPath(); g.arc(ball.x,ball.y,BR,0,7); g.fill();
+    g.fillStyle="rgba(0,0,0,.35)"; g.beginPath(); g.arc(ball.x-4,ball.y-3,2,0,7); g.arc(ball.x+3,ball.y-4,2,0,7); g.arc(ball.x,ball.y+2,2,0,7); g.fill();
+  }
+  function loop(myGen){ if(myGen!==gen) return; update(); if(phase!=="win") draw(); raf=requestAnimationFrame(()=>loop(myGen)); }
+  function stop(){ gen++; clearTimeout(settleT); cancelAnimationFrame(raf); }
+  // controls: drag to aim, release/click to bowl
+  function setAimFromX(px){ const r=cv.getBoundingClientRect(); const x=(px-r.left)*(W/r.width); aim=Math.max(-1,Math.min(1,(x-W/2)/(W*0.42))); }
+  cv.addEventListener("mousemove",e=>{ if(phase==="aim"){ setAimFromX(e.clientX); } });
+  cv.addEventListener("touchmove",e=>{ if(phase==="aim"){ setAimFromX(e.touches[0].clientX); e.preventDefault(); } },{passive:false});
+  cv.addEventListener("click",()=>{ if(phase==="aim") launch(); });
+  $("#bowlBtn").addEventListener("click",()=>{ if(phase==="aim") launch(); else reset(); });
+  return { reset, stop };
+})();
+
+/* ============ GAME: Air Hockey ============ */
+const AirHockey=(function(){
+  const cv=$("#puck"); if(!cv) return { reset(){}, stop(){} };
+  const g=cv.getContext("2d"); const W=cv.width,H=cv.height;
+  const PADR=34, PUCKR=15, GOAL=W*0.34, TARGET=5;
+  let you, ai, puck, sYou, sAI, running, raf, gen=0, resumeT=0;
+  let ac; function tone(f,d){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();const o=ac.createOscillator(),gn=ac.createGain();o.frequency.value=f;o.connect(gn);gn.connect(ac.destination);gn.gain.setValueAtTime(.05,ac.currentTime);gn.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+d);o.start();o.stop(ac.currentTime+d);}catch(e){}}
+  function reset(){
+    stop();
+    you={x:W/2,y:H-50,px:W/2,py:H-50};
+    ai={x:W/2,y:50};
+    centerPuck(1);
+    sYou=0; sAI=0; running=false;
+    $("#puckYou").textContent=0; $("#puckAI").textContent=0; $("#puckBtn").textContent="Start";
+    draw();
+  }
+  function centerPuck(dir){ puck={x:W/2,y:H/2,vx:(Math.random()*2-1)*2,vy:3.2*dir}; }
+  function start(){ if(running)return; running=true; $("#puckBtn").textContent="Playing…"; loop(gen); }
+  function reflectPaddle(pad){
+    const dx=puck.x-pad.x, dy=puck.y-pad.y; let d=Math.hypot(dx,dy); if(d===0)d=0.01;
+    if(d<PADR+PUCKR){
+      const nx=dx/d, ny=dy/d, sp=Math.max(6,Math.hypot(puck.vx,puck.vy));
+      puck.vx=nx*sp; puck.vy=ny*sp;
+      // inject paddle motion (only meaningful for player)
+      if(pad.px!==undefined){ puck.vx+=(pad.x-pad.px)*0.35; puck.vy+=(pad.y-pad.py)*0.35; }
+      const ov=PADR+PUCKR-d; puck.x+=nx*ov; puck.y+=ny*ov;
+      tone(520,.05);
+    }
+  }
+  function update(){
+    // AI tracks the puck horizontally, drifts home vertically
+    const tx = puck.y<H/2 ? puck.x : W/2;
+    ai.x += (tx-ai.x)*0.08; ai.y += (46-ai.y)*0.1;
+    ai.x=Math.max(PADR,Math.min(W-PADR,ai.x));
+    puck.x+=puck.vx; puck.y+=puck.vy; puck.vx*=0.995; puck.vy*=0.995;
+    // side walls
+    if(puck.x<PUCKR){puck.x=PUCKR;puck.vx*=-1;tone(300,.04);} if(puck.x>W-PUCKR){puck.x=W-PUCKR;puck.vx*=-1;tone(300,.04);}
+    // goals / top-bottom walls
+    if(puck.y<PUCKR){
+      if(Math.abs(puck.x-W/2)<GOAL/2){ sYou++; $("#puckYou").textContent=sYou; score(1); return; }
+      puck.y=PUCKR; puck.vy*=-1; tone(300,.04);
+    }
+    if(puck.y>H-PUCKR){
+      if(Math.abs(puck.x-W/2)<GOAL/2){ sAI++; $("#puckAI").textContent=sAI; score(-1); return; }
+      puck.y=H-PUCKR; puck.vy*=-1; tone(300,.04);
+    }
+    reflectPaddle(you); reflectPaddle(ai);
+    you.px=you.x; you.py=you.y;
+  }
+  function score(dir){
+    tone(dir>0?660:160,.18);
+    if(sYou>=TARGET) return end(true);
+    if(sAI>=TARGET) return end(false);
+    running=false; centerPuck(dir>0?1:-1);
+    const myGen=gen;
+    resumeT=setTimeout(()=>{ if(myGen===gen && $("#scene-game").classList.contains("on") && arcCurrent()==="puck"){ running=true; loop(myGen); } }, 700);
+  }
+  function end(win){
+    running=false; clearTimeout(resumeT); cancelAnimationFrame(raf);
+    draw();
+    g.fillStyle="rgba(11,10,31,.86)"; g.fillRect(0,0,W,H); g.textAlign="center";
+    if(win){ Confetti.burst(150); g.fillStyle="#FFD166"; g.font="bold 32px system-ui"; g.fillText("You win! 🏒",W/2,H/2-22);
+      g.fillStyle="#F5F3FF"; g.font="16px system-ui"; wrap(CONFIG.hockeyWin||"You win!",W/2,H/2+14,W-90,22); }
+    else{ g.fillStyle="#FF6B9D"; g.font="bold 28px system-ui"; g.fillText("Rival got you 🏒",W/2,H/2-4); g.fillStyle="#A7A3C9"; g.font="15px system-ui"; g.fillText("Press Start — run it back.",W/2,H/2+26); }
+    $("#puckBtn").textContent="Play again ▶";
+  }
+  function wrap(t,cx,cy,maxW,lh){const words=t.split(" ");let line="",y=cy;for(const w of words){const test=line+w+" ";if(g.measureText(test).width>maxW&&line){g.fillText(line,cx,y);line=w+" ";y+=lh;}else line=test;}g.fillText(line,cx,y);}
+  function drawPad(p,col){
+    g.fillStyle=col; g.beginPath(); g.arc(p.x,p.y,PADR,0,7); g.fill();
+    g.fillStyle="rgba(11,10,31,.85)"; g.beginPath(); g.arc(p.x,p.y,PADR*0.55,0,7); g.fill();
+    g.fillStyle=col; g.beginPath(); g.arc(p.x,p.y,PADR*0.34,0,7); g.fill();
+  }
+  function draw(){
+    g.fillStyle="#0c0a24"; g.fillRect(0,0,W,H);
+    // table
+    g.strokeStyle="rgba(255,255,255,.12)"; g.lineWidth=2; g.strokeRect(6,6,W-12,H-12);
+    g.beginPath(); g.moveTo(6,H/2); g.lineTo(W-6,H/2); g.stroke();
+    g.beginPath(); g.arc(W/2,H/2,54,0,7); g.stroke();
+    // goals
+    g.lineWidth=5; g.strokeStyle="#FFD166";
+    g.beginPath(); g.moveTo(W/2-GOAL/2,7); g.lineTo(W/2+GOAL/2,7); g.stroke();
+    g.beginPath(); g.moveTo(W/2-GOAL/2,H-7); g.lineTo(W/2+GOAL/2,H-7); g.stroke();
+    drawPad(ai,"#FF6B9D"); drawPad(you,"#4ECDC4");
+    // puck
+    g.fillStyle="#F5F3FF"; g.beginPath(); g.arc(puck.x,puck.y,PUCKR,0,7); g.fill();
+    g.fillStyle="rgba(0,0,0,.25)"; g.beginPath(); g.arc(puck.x,puck.y,PUCKR*0.5,0,7); g.fill();
+  }
+  function loop(myGen){ if(myGen!==gen || !running) return; update(); if(running && myGen===gen) draw(); raf=requestAnimationFrame(()=>loop(myGen)); }
+  function stop(){ gen++; running=false; clearTimeout(resumeT); cancelAnimationFrame(raf); }
+  function move(px,py){ const r=cv.getBoundingClientRect(); const x=(px-r.left)*(W/r.width), y=(py-r.top)*(H/r.height);
+    you.x=Math.max(PADR,Math.min(W-PADR,x)); you.y=Math.max(H/2+PADR*0.2,Math.min(H-PADR,y)); }
+  cv.addEventListener("mousemove",e=>move(e.clientX,e.clientY));
+  cv.addEventListener("touchmove",e=>{ move(e.touches[0].clientX,e.touches[0].clientY); e.preventDefault(); },{passive:false});
+  $("#puckBtn").addEventListener("click",()=>{ if(running)return; if(sYou>=TARGET||sAI>=TARGET||$("#puckBtn").textContent.indexOf("again")>=0) reset(); start(); });
+  return { reset, stop };
+})();
+
+/* ============ ARCADE: game switcher ============ */
+let _arcCur="cup";
+function arcCurrent(){ return _arcCur; }
+(function(){
+  const map={ cup:{show(){Game.reset();}, hide(){}}, bowl:{show(){Bowling.reset();}, hide(){Bowling.stop();}}, puck:{show(){AirHockey.reset();}, hide(){AirHockey.stop();}} };
+  function select(key){
+    if(!map[key])return;
+    if(_arcCur!==key && map[_arcCur]) map[_arcCur].hide();
+    _arcCur=key;
+    $$(".arc-tab").forEach(t=>t.classList.toggle("on",t.dataset.arc===key));
+    $$(".arc-panel").forEach(p=>p.classList.toggle("on",p.dataset.panel===key));
+    map[key].show();
+  }
+  $$(".arc-tab").forEach(t=>t.addEventListener("click",()=>select(t.dataset.arc)));
+  // expose so openScene can (re)start whichever game is showing
+  window.__arcSelect=select;
+})();
+
 /* ============ CAKE ============ */
 const Cake=(function(){
   const cv=$("#cake"), g=cv.getContext("2d"); const W=cv.width,H=cv.height;
@@ -2507,16 +2888,85 @@ const Cake=(function(){
 })();
 
 /* ============ COMPLIMENT MACHINE ============ */
-(function(){
-  const out=$("#readout"), lever=$("#lever"); let idx=-1;
-  lever.addEventListener("click",()=>{
+const ComplimentMachine=(function(){
+  const out=$("#readout"); let idx=-1, spinning=false;
+  function pull(){
+    if(spinning) return; // guard: ignore re-fires until the current spin's setInterval finishes
+    spinning=true;
     let n; do{ n=Math.floor(Math.random()*CONFIG.compliments.length);}while(n===idx && CONFIG.compliments.length>1); idx=n;
     // slot spin
     let ticks=0; const spin=setInterval(()=>{
       out.innerHTML=`<div><span class="small">Loading…</span>${CONFIG.compliments[Math.floor(Math.random()*CONFIG.compliments.length)]}</div>`;
-      if(++ticks>8){ clearInterval(spin); out.innerHTML=`<div><span class="small">For you</span>${CONFIG.compliments[idx]}</div>`; out.animate([{transform:"scale(.96)",opacity:.4},{transform:"scale(1)",opacity:1}],{duration:300}); Confetti.burst(50,innerWidth/2,innerHeight*0.5); }
+      if(++ticks>8){ clearInterval(spin); out.innerHTML=`<div><span class="small">For you</span>${CONFIG.compliments[idx]}</div>`; out.animate([{transform:"scale(.96)",opacity:.4},{transform:"scale(1)",opacity:1}],{duration:300}); Confetti.burst(50,innerWidth/2,innerHeight*0.5); spinning=false; }
     },70);
+  }
+  return { pull };
+})();
+
+/* ============ LEVER (drag-to-pull the compliment machine) ============
+   Pointer-events drag: pull the knob down past ~60% of its travel and
+   release to fire; short of that, it springs back with no effect. A plain
+   tap (pointerdown+pointerup with no real movement), or Enter/Space on the
+   focused button, does an automatic yank-and-spring instead — pull() fires
+   the same way either path. */
+(function(){
+  const knob=$("#lever"), track=$("#leverTrack");
+  if(!knob || !track) return;
+  const CLICK_TOL=6, FIRE_FRAC=0.6;
+  let maxTravel=0, startY=0, dragging=false, movedFar=false, activeId=null;
+
+  function computeMax(){ maxTravel=Math.max(1, track.clientHeight - knob.offsetHeight); }
+  function setPos(px, animated, ms){
+    knob.style.transitionDuration = animated ? (ms||"420")+"ms" : "0ms";
+    knob.style.transitionTimingFunction = animated ? "cubic-bezier(.34,1.56,.64,1)" : "linear";
+    knob.style.transform = `translate(-50%, ${px}px)`;
+  }
+  function springBack(){ setPos(0, !reduceMotion); }
+  function autoYank(){
+    computeMax();
+    if(reduceMotion){ ComplimentMachine.pull(); return; }
+    knob.classList.remove("idle");
+    setPos(maxTravel, true, 160);
+    setTimeout(()=>{ springBack(); setTimeout(()=>knob.classList.add("idle"),420); }, 170);
+    ComplimentMachine.pull();
+  }
+
+  knob.addEventListener("pointerdown", e=>{
+    computeMax();
+    startY=e.clientY; dragging=true; movedFar=false; activeId=e.pointerId;
+    knob.classList.remove("idle");
+    knob.classList.add("grabbing");
+    try{ knob.setPointerCapture(e.pointerId); }catch(err){}
+    setPos(0, false);
   });
+  knob.addEventListener("pointermove", e=>{
+    if(!dragging || e.pointerId!==activeId) return;
+    const dy=e.clientY-startY;
+    if(Math.abs(dy)>CLICK_TOL) movedFar=true;
+    setPos(Math.min(Math.max(dy,0),maxTravel), false);
+  });
+  function endDrag(e){
+    if(!dragging) return;
+    dragging=false;
+    knob.classList.remove("grabbing");
+    const dy=Math.min(Math.max((e.clientY-startY),0),maxTravel);
+    const frac = maxTravel ? dy/maxTravel : 0;
+    springBack();
+    setTimeout(()=>knob.classList.add("idle"), reduceMotion?0:420);
+    if(movedFar && frac>=FIRE_FRAC) ComplimentMachine.pull();
+  }
+  knob.addEventListener("pointerup", endDrag);
+  knob.addEventListener("pointercancel", ()=>{
+    if(!dragging) return;
+    dragging=false; movedFar=false; knob.classList.remove("grabbing"); springBack();
+    setTimeout(()=>knob.classList.add("idle"), reduceMotion?0:420);
+  });
+  knob.addEventListener("click", ()=>{
+    if(movedFar){ movedFar=false; return; } // already handled by the drag release above
+    autoYank();
+  });
+  addEventListener("resize", computeMax);
+  computeMax();
 })();
 
 /* ============ LIGHTBOX (shared: wall taps open here) ============ */
@@ -2873,6 +3323,68 @@ const _fireworksBtn=$("#fireworks");
 if(_fireworksBtn) _fireworksBtn.addEventListener("click",()=>Stickers.fire("heart-hands",2600));
 const _leverBtn=$("#lever");
 if(_leverBtn) _leverBtn.addEventListener("click",()=>Stickers.fire("laughing",1800));
+
+/* ============ REAL AVATAR EVERYWHERE ============
+   Swaps the hand-drawn SVG avatar for the real illustrated avatar images —
+   header badge, floating companion, finale — and gives every scene page its
+   own distinct expression badge (top-right corner). Purely additive: doesn't
+   edit any scene HTML (some scenes are mid-rewrite elsewhere), just injects
+   via JS and overrides LiveAvatar's/openScene's public entry points — safe
+   because JS looks up identifiers at call time, not at definition time, so
+   this works regardless of whether those run now or later on interaction. */
+(function(){
+  const PORTRAIT="photos/momo-avatar-badge.jpg";
+  const STK=n=>"photos/stickers/"+n+".png";
+  const sceneAvatar={
+    wrapped:STK("thumbs-up"), mixtape:STK("waving"), wall:PORTRAIT, montage:STK("shy-thinking"),
+    machine:STK("laughing"), scratch:STK("surprised"), game:STK("facepalm-2"), wheel:STK("facepalm"),
+    cake:STK("surprised"), finale:STK("heart-hands")
+  };
+  function imgHTML(src,alt){ return '<img src="'+src+'" alt="'+alt+'" style="width:100%;height:100%;object-fit:cover;object-position:center 70%;border-radius:50%;display:block">'; }
+
+  const headerSlot=$("#headerAvatarSlot");
+  if(headerSlot) headerSlot.innerHTML=imgHTML(PORTRAIT,"Momo");
+
+  if(typeof LiveAvatar!=="undefined"){
+    LiveAvatar.mountCompanion=function(){
+      const c=$("#avatarCompanion"); if(!c||c.dataset.mounted)return;
+      c.innerHTML=imgHTML(PORTRAIT,"Momo"); c.dataset.mounted="1";
+      c.classList.add("show"); c.setAttribute("aria-hidden","false");
+      const stickers=["heart-hands","laughing","waving","surprised","thumbs-up","shy-thinking"];
+      const greetings=["Hi, it's me 👋","Boop! 💫","That tickled 😄","Hehe, hi Momo 💛","Sparkles for you ✨","Aww, hi 🥰"];
+      let si=0;
+      const fire=()=>{
+        const im=c.querySelector("img"); if(!im)return;
+        si=(si+1)%stickers.length;
+        im.src=STK(stickers[si]);
+        if(!reduceMotion) im.animate([{transform:"scale(1)"},{transform:"scale(1.15)"},{transform:"scale(1)"}],{duration:420,easing:"cubic-bezier(.2,.8,.2,1.2)"});
+        toast(greetings[si],1800);
+        clearTimeout(fire._t); fire._t=setTimeout(()=>{ im.src=PORTRAIT; },1600);
+      };
+      c.addEventListener("click",fire);
+      c.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();fire();} });
+    };
+    LiveAvatar.mountFinale=function(){
+      const f=$("#finaleAvatarSlot"); if(!f||f.dataset.mounted)return;
+      f.innerHTML=imgHTML(STK("heart-hands"),"Momo"); f.dataset.mounted="1";
+    };
+  }
+
+  if(typeof openScene==="function"){
+    const _baseOpenScene=openScene;
+    openScene=function(id){
+      _baseOpenScene(id);
+      const s=document.getElementById("scene-"+id); if(!s) return;
+      const inner=s.querySelector(".scene-inner"); if(!inner) return;
+      if(sceneAvatar[id] && !inner.querySelector(".scene-avatar-badge")){
+        const b=document.createElement("div");
+        b.className="scene-avatar-badge";
+        b.innerHTML=imgHTML(sceneAvatar[id], CONFIG.name+"'s reaction");
+        inner.insertBefore(b, inner.firstChild);
+      }
+    };
+  }
+})();
 </script>
 </body>
 </html>

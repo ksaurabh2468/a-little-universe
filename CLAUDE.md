@@ -57,7 +57,7 @@ Two live mirrors, both served from the same `index.html`:
 | Target | URL | Update mechanism |
 |---|---|---|
 | Vercel | https://avi-turns-31.vercel.app (renamed Jul 2026; old https://a-little-universe-smoky.vercel.app still resolves — renaming a Vercel project does not remove its prior domains) | `vercel deploy --prod --yes` (run from this repo) |
-| GitHub Pages | https://ksaurabh2468.github.io/a-little-universe/ | Automatic on `git push origin main` (repo is public; Pages builds off `main` root) |
+| GitHub Pages | https://ksaurabh2468.github.io/avi-turns-31/ (repo renamed Jul 2026 from `a-little-universe`; old `.../a-little-universe/` URL redirects via GitHub for a while, don't rely on that permanently) | Automatic on `git push origin main` (repo is public; Pages builds off `main` root) |
 
 **Known divergence (Jul 2026):** Vercel is currently AHEAD of GitHub Pages — it has the full
 "Dusk Till Dawn" (ZAYN feat. Sia) mp3 as site-wide background music (`audio/dusk-till-dawn.mp3`,

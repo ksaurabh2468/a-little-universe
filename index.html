@@ -1343,6 +1343,22 @@ const Journey=(function(){
     refreshChips();
     applyPageOverlay();
     if(visited.length>=CARDS.length && !sunriseDone) startSunrise();
+    advanceDrip(id);
+  }
+
+  /* ---------- gating hook: markVisited() fires on every closeScene(), for every
+     card, whether or not story mode is running. Only advance the drive when the
+     just-completed stop is the ONE the drip is currently parked at — anything
+     else (a revisit of an already-open stop, or markVisited with no drip active)
+     is a no-op. This is what turns "await" back into "drive" toward the next sign,
+     or — on the finale — ends the story and falls through to the normal sunrise. ---------- */
+  function advanceDrip(id){
+    if(!drip) return;
+    const cur=CARDS[drip.n];
+    if(!cur || cur.id!==id) return;
+    drip.n++;
+    if(drip.n>=CARDS.length){ finishIntro(false); return; }
+    startDriveLeg();
   }
 
   /* ---------- sky palette: night -> late-night violet -> pre-dawn indigo -> sunrise ---------- */
@@ -1431,12 +1447,13 @@ const Journey=(function(){
 
   /* ---------- place banner: "📍 <place>" — slides in top-center for ~2.6s on each drip reveal ---------- */
   let placeBannerT=null;
-  function placeBanner(place, vibe){
+  function placeBannerHide(){ if(placeBannerEl) placeBannerEl.classList.remove("show"); }
+  function placeBanner(place, vibe, hold){
     if(!placeBannerEl){ toast("📍 "+place+(vibe?" — "+vibe:""), 3200); return; }
     placeBannerEl.innerHTML="<b>📍 "+place+"</b>"+(vibe?'<span class="pb-vibe">'+vibe+'</span>':"");
     placeBannerEl.classList.add("show");
     clearTimeout(placeBannerT);
-    placeBannerT=setTimeout(()=>placeBannerEl.classList.remove("show"), 3600);
+    if(!hold) placeBannerT=setTimeout(()=>placeBannerEl.classList.remove("show"), 3600);
   }
 
   /* ---------- opening cinematic: "both of us get in the car" ----------
@@ -1479,17 +1496,30 @@ const Journey=(function(){
   }
   if(openingSkipBtn) openingSkipBtn.addEventListener("click", finishOpeningCine);
 
-  /* ---------- timed drip: reveals stop 1 ~4s after the drive starts, then one
-     every ~11s — a destination sign grows from the horizon (reusing drawSignAt),
-     the car brakes near it, then the card pops in with a place banner. Paced
+  /* ---------- completion-gated drip: one stop at a time, in CARDS order. A
+     destination sign grows from the horizon (reusing drawSignAt) as the car
+     cruises toward it — phase "drive" — then the car parks on arrival —
+     phase "arrive" — which reveals that stop's card, shows the place banner,
+     and starts the ~2.5s "place scene" establish (see drawPlaceScene). Once
+     established the phase settles into "await": parked, holding, doing
+     nothing further until the user opens that card's scene and closes it.
+     closeScene() -> Journey.markVisited(id) -> advanceDrip(id) is the ONLY
+     thing that moves the drip on to the next stop (or, on the finale, ends
+     story mode) — there is no time-based auto-advance between stops. Paced
      with real-time deltas (dt, from performance.now() in update() below), NOT
-     setInterval — so it naturally pauses whenever update() isn't running, i.e.
-     while a scene is open or the tab is hidden (frame()'s existing guard). */
-  const DRIP_FIRST=4000, DRIP_GAP=11000, DRIP_APPROACH=1200;
+     setInterval — so "drive"/"arrive" naturally pause whenever update() isn't
+     running, i.e. while a scene is open or the tab is hidden. */
+  const DRIP_LOOKAHEAD_PERS=0.028, PLACE_ESTABLISH=2500;
   let drip=null;
+  function startDriveLeg(){
+    introSeq={ i:drip.n, sign:{ emoji:CARDS[drip.n].ico, z: camZ + DEPTH/DRIP_LOOKAHEAD_PERS } };
+    drip.phase="drive"; drip.estT=0;
+    speedTarget=1.8;
+    placeBannerHide(); // clear the last stop's banner while we drive to the next
+  }
   function startDrip(){
-    drip={ n:0, t:0, phase:"wait", apT:0 };
-    speedTarget=1.6;
+    drip={ n:0, phase:"drive", estT:0 };
+    startDriveLeg();
     if(skipBtn) skipBtn.hidden=false;
   }
 
@@ -1607,30 +1637,29 @@ const Journey=(function(){
 
     roadside.forEach(o=>{ while(o.z-camZ < 2) o.z += N_SIDE*SPAN; });
 
-    /* timed drip: real dt accumulates toward the next reveal. This loop only
-       runs while frame() is actually calling update() — which it doesn't while
-       a scene is open or the tab is hidden — so the drip clock pauses for free. */
+    /* completion-gated drip: real dt drives the "drive" cruise/brake and the
+       "arrive" establish timer; nothing here ever advances drip.n — only
+       advanceDrip() (called from markVisited on scene close) does that. This
+       loop only runs while frame() is actually calling update() — which it
+       doesn't while a scene is open or the tab is hidden — so both timers
+       pause for free while the user is off doing the stop's actual task. */
     if(drip){
-      if(drip.phase==="wait"){
-        drip.t += dt;
-        const target = drip.n===0 ? DRIP_FIRST : DRIP_GAP;
-        if(drip.t >= target - DRIP_APPROACH){
-          drip.phase="approach"; drip.apT=0;
-          introSeq={ i:drip.n, sign:{ emoji:CARDS[drip.n].ico, z: camZ + DEPTH/0.05 } };
-          speedTarget=3.0;
-        }
-      } else if(drip.phase==="approach" && introSeq){
-        drip.apT += dt;
+      if(drip.phase==="drive" && introSeq){
         const p=persOf(introSeq.sign.z);
         speedTarget = p>0.4 ? Math.max(0.4, 3.0*(1-(p-0.4)/0.6)) : 3.0;
-        if(drip.apT>=DRIP_APPROACH || p>=1){
-          revealCard(cardEls()[drip.n], true);
-          placeBanner(CARDS[drip.n].place, CARDS[drip.n].vibe);
-          drip.n++;
+        if(p>=1){
           introSeq=null;
-          if(drip.n>=CARDS.length){ finishIntro(false); }
-          else { drip.phase="wait"; drip.t=0; speedTarget=1.6; }
+          drip.phase="arrive"; drip.estT=0;
+          revealCard(cardEls()[drip.n], true);
+          placeBanner(CARDS[drip.n].place, CARDS[drip.n].vibe, true); // persist while parked here
+          speedTarget=0;
         }
+      } else if(drip.phase==="arrive"){
+        drip.estT += dt;
+        speedTarget=0;
+        if(reduceMotion || drip.estT>=PLACE_ESTABLISH) drip.phase="await";
+      } else if(drip.phase==="await"){
+        speedTarget=0;
       }
     }
 
@@ -1764,6 +1793,216 @@ const Journey=(function(){
     ctx.globalAlpha=1;
   }
 
+  /* ---------- place scenes: what you see out the windshield once parked at a
+     stop (drip phase "arrive"/"await"). Static composition — the car isn't
+     moving, so nothing here tracks camZ — that "establishes" over tIn 0..1
+     (~2.5s, eased) then holds as-is for as long as the stop stays parked,
+     including while the task's scene modal covers the canvas: draw() simply
+     stops being called while a scene is open, so whatever was last painted
+     stays put underneath, unchanged, until the modal closes. A handful of
+     cheap shapes/gradients per place, same restrained night-drive palette. ---------- */
+  function pScBuildings(baseY,n,minH,maxH,color,alpha){
+    if(alpha<=0.01) return;
+    const bw=W/n;
+    ctx.globalAlpha=alpha; ctx.fillStyle=color;
+    for(let i=0;i<n;i++){
+      const hh=minH+((i*53+17)%29)/29*(maxH-minH);
+      ctx.fillRect(i*bw+1, baseY-hh, bw-2, hh);
+    }
+    ctx.globalAlpha=1;
+  }
+  function pScWater(baseY,alpha,ts){
+    if(alpha<=0.01) return;
+    ctx.globalAlpha=alpha;
+    for(let i=0;i<10;i++){
+      const x=(i/10)*W + Math.sin((ts||0)/900+i)*4, w=14+(i%3)*8, y=baseY+6+(i%4)*7;
+      ctx.fillStyle = i%2? "rgba(255,209,102,.35)" : "rgba(200,210,255,.22)";
+      ctx.fillRect(x,y,w,1.6);
+    }
+    ctx.globalAlpha=1;
+  }
+  function pScFerris(cx,cy,r,alpha,ts){
+    if(alpha<=0.02||r<=0) return;
+    ctx.save(); ctx.globalAlpha=alpha; ctx.translate(cx,cy);
+    ctx.strokeStyle="rgba(255,209,102,.6)"; ctx.lineWidth=Math.max(1,1.6*SCL);
+    ctx.beginPath(); ctx.arc(0,0,r,0,7); ctx.stroke();
+    const spokes=8, rot=reduceMotion?0:(ts||0)/4000;
+    for(let i=0;i<spokes;i++){
+      const a=rot+i/spokes*Math.PI*2, px=Math.cos(a)*r, py=Math.sin(a)*r;
+      ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(px,py); ctx.stroke();
+      ctx.fillStyle = i%2 ? "#FFD166" : "#FF6B9D";
+      ctx.beginPath(); ctx.arc(px,py,Math.max(1.5,2.2*SCL),0,7); ctx.fill();
+    }
+    ctx.restore();
+  }
+  function pScLabel(card,alpha){
+    if(!card || alpha<=0.02) return;
+    ctx.save(); ctx.globalAlpha=alpha; ctx.textAlign="center"; ctx.textBaseline="middle";
+    const cx=W/2, y=H*0.13;
+    ctx.font="700 "+Math.round(Math.max(11,13*SCL))+"px system-ui, sans-serif";
+    ctx.fillStyle="rgba(255,209,102,.92)";
+    ctx.fillText("📍 "+card.place.toUpperCase(), cx, y);
+    if(card.vibe){
+      ctx.font="italic 400 "+Math.round(Math.max(10,11.5*SCL))+"px system-ui, sans-serif";
+      ctx.fillStyle="rgba(245,243,255,.78)";
+      ctx.fillText(card.vibe, cx, y+18*SCL);
+    }
+    ctx.restore();
+  }
+  /* cardId -> distinct night silhouette. tIn is 0..1 establish progress (already
+     eased + reduceMotion-forced-to-1 by the caller). */
+  function drawPlaceScene(cardId, tIn, ts){
+    const e=Math.max(0,Math.min(1,tIn)), gy=horizonY;
+    ctx.save();
+    switch(cardId){
+      case "wrapped": { // Bandra — fairy-lit lane, low building silhouettes, café glow
+        pScBuildings(gy,9,14*SCL,30*SCL,"#14122e",0.15+0.75*e);
+        ctx.globalAlpha=e; ctx.strokeStyle="rgba(255,209,102,.4)"; ctx.lineWidth=1.2;
+        const topY=gy*0.18;
+        ctx.beginPath();
+        for(let i=0;i<=6;i++){ const x=i*W/6, y=topY+Math.sin(i*1.3)*6; i? ctx.lineTo(x,y):ctx.moveTo(x,y); }
+        ctx.stroke();
+        for(let i=0;i<=18;i++){
+          const x=(i/18)*W, y=topY+Math.sin(i*0.7)*8+4;
+          ctx.beginPath(); ctx.fillStyle = i%2? "rgba(255,209,102,.9)":"rgba(255,140,170,.9)";
+          ctx.arc(x,y,Math.max(1.4,2.2*SCL),0,7); ctx.fill();
+        }
+        ctx.globalAlpha=1;
+        const cg=ctx.createRadialGradient(W*0.5,gy-6,4,W*0.5,gy-6,W*0.16);
+        cg.addColorStop(0,"rgba(255,170,110,"+(.45*e).toFixed(3)+")"); cg.addColorStop(1,"rgba(255,170,110,0)");
+        ctx.fillStyle=cg; ctx.fillRect(0,gy-W*0.16,W,W*0.32);
+        break;
+      }
+      case "mixtape": { // Bandra–Worli Sea Link — two cable-stay pylons, dark water
+        const p1x=W*0.32, p2x=W*0.68, pTop=gy-H*0.30*e, pw=Math.max(3,6*SCL);
+        ctx.globalAlpha=e; ctx.fillStyle="rgba(20,18,46,.95)";
+        [p1x,p2x].forEach(px=>ctx.fillRect(px-pw/2,pTop,pw,gy-pTop));
+        ctx.strokeStyle="rgba(200,210,255,.35)"; ctx.lineWidth=1;
+        [p1x,p2x].forEach(px=>{
+          for(let i=0;i<7;i++){ const fx=px+(i/6-0.5)*W*0.34; ctx.beginPath(); ctx.moveTo(px,pTop+6*SCL); ctx.lineTo(fx,gy); ctx.stroke(); }
+        });
+        ctx.globalAlpha=1;
+        pScWater(gy,0.55*e,ts);
+        break;
+      }
+      case "wall": { // Bandstand — foreground rocks, promenade railing, pale waves
+        ctx.globalAlpha=e; ctx.fillStyle="rgba(18,16,40,.95)";
+        for(let i=0;i<5;i++){
+          const rx=i*W/5, rh=(10+((i*37)%14))*SCL;
+          ctx.beginPath(); ctx.moveTo(rx,gy); ctx.lineTo(rx+W/10,gy-rh); ctx.lineTo(rx+W/5,gy); ctx.closePath(); ctx.fill();
+        }
+        ctx.strokeStyle="rgba(155,140,220,.4)"; ctx.lineWidth=Math.max(1,2*SCL);
+        ctx.beginPath(); ctx.moveTo(0,gy-4*SCL); ctx.lineTo(W,gy-4*SCL); ctx.stroke();
+        for(let i=0;i<14;i++){ const x=i*W/14; ctx.beginPath(); ctx.moveTo(x,gy-4*SCL); ctx.lineTo(x,gy+3*SCL); ctx.stroke(); }
+        ctx.globalAlpha=1;
+        ctx.strokeStyle="rgba(245,243,255,.22)"; ctx.lineWidth=1.4;
+        for(let i=0;i<3;i++){
+          const wy=gy+8*SCL+i*7*SCL;
+          ctx.beginPath();
+          for(let x=0;x<=W;x+=20){ const y=wy+Math.sin(x*0.05+(ts||0)/700+i)*2; x? ctx.lineTo(x,y):ctx.moveTo(x,y); }
+          ctx.globalAlpha=e; ctx.stroke();
+        }
+        ctx.globalAlpha=1;
+        break;
+      }
+      case "montage": { // Marine Drive — the Queen's Necklace curve of dots, faint skyline
+        pScBuildings(gy-H*0.05,12,8*SCL,16*SCL,"#171533",0.35*e);
+        ctx.globalAlpha=e;
+        const n=26;
+        for(let i=0;i<n;i++){
+          const t=i/(n-1), x=t*W, y=gy-Math.sin(t*Math.PI)*18*SCL+6*SCL;
+          ctx.beginPath(); ctx.fillStyle = i%2? "rgba(255,209,102,.9)":"rgba(255,235,180,.85)";
+          ctx.arc(x,y,Math.max(1.4,2*SCL),0,7); ctx.fill();
+        }
+        ctx.globalAlpha=1;
+        break;
+      }
+      case "machine": { // Gateway of India — floodlit central arch + side turrets
+        const cx=W/2, archW=W*0.22*e, archH=H*0.30*e, baseY=gy;
+        ctx.globalAlpha=e;
+        const ug=ctx.createRadialGradient(cx,baseY,4,cx,baseY,Math.max(1,archW*1.6));
+        ug.addColorStop(0,"rgba(255,190,120,.4)"); ug.addColorStop(1,"rgba(255,190,120,0)");
+        ctx.fillStyle=ug; ctx.fillRect(cx-archW*1.6,baseY-archH,archW*3.2,archH*1.3);
+        ctx.fillStyle="rgba(16,14,36,.95)";
+        roundRectPath(cx-archW/2,baseY-archH,archW,archH*0.72,archW*0.14); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(cx-archW/2,baseY-archH*0.5); ctx.arc(cx,baseY-archH*0.5,archW/2,Math.PI,0); ctx.closePath(); ctx.fill();
+        [-1,1].forEach(side=>{
+          const tx=cx+side*archW*0.9, tw=archW*0.16;
+          ctx.fillRect(tx-tw/2,baseY-archH*0.62,tw,archH*0.62);
+          ctx.beginPath(); ctx.moveTo(tx-tw/2,baseY-archH*0.62); ctx.lineTo(tx,baseY-archH*0.78); ctx.lineTo(tx+tw/2,baseY-archH*0.62); ctx.closePath(); ctx.fill();
+        });
+        ctx.globalAlpha=1;
+        break;
+      }
+      case "scratch": { // Colaba Causeway — arched colonial facades, string-lit stalls
+        ctx.globalAlpha=e; ctx.fillStyle="#171533";
+        const n=6, bw=W/n;
+        for(let i=0;i<n;i++){
+          const x=i*bw, bh=(24+((i*29)%12))*SCL;
+          ctx.fillRect(x+2,gy-bh,bw-4,bh);
+          ctx.fillStyle="#0c0a24"; ctx.beginPath(); ctx.arc(x+bw/2,gy-bh+10*SCL,Math.min(9*SCL,bw*0.28),Math.PI,0); ctx.fill();
+          ctx.fillStyle="#171533";
+        }
+        ctx.strokeStyle="rgba(255,209,102,.4)"; ctx.lineWidth=1;
+        ctx.beginPath();
+        for(let i=0;i<=n;i++){ const x=i*bw, y=gy-6*SCL+Math.sin(i*1.4)*4; i? ctx.lineTo(x,y):ctx.moveTo(x,y); }
+        ctx.stroke();
+        for(let i=0;i<n*3;i++){
+          const x=(i/(n*3))*W, y=gy-6*SCL+Math.sin(i*0.6)*5+3;
+          ctx.beginPath(); ctx.fillStyle = i%2? "rgba(255,209,102,.9)":"rgba(255,255,255,.7)";
+          ctx.arc(x,y,Math.max(1,1.6*SCL),0,7); ctx.fill();
+        }
+        ctx.globalAlpha=1;
+        break;
+      }
+      case "game": { // Juhu Beach — flat wet sand, lapping waves, far ferris wheel
+        ctx.globalAlpha=e; ctx.fillStyle="rgba(40,36,30,.5)"; ctx.fillRect(0,gy,W,H-gy);
+        ctx.strokeStyle="rgba(245,243,255,.18)"; ctx.lineWidth=1.4;
+        for(let i=0;i<3;i++){
+          const wy=gy+10*SCL+i*10*SCL;
+          ctx.beginPath();
+          for(let x=0;x<=W;x+=22){ const y=wy+Math.sin(x*0.04+(ts||0)/650+i)*2.4; x? ctx.lineTo(x,y):ctx.moveTo(x,y); }
+          ctx.stroke();
+        }
+        ctx.globalAlpha=1;
+        pScFerris(W*0.86,gy-H*0.10,H*0.09*e,0.85*e,ts);
+        break;
+      }
+      case "wheel": { // Girgaon Chowpatty — lit ferris wheel, food carts, sea line
+        pScFerris(W*0.30,gy-H*0.13,H*0.11*e,e,ts);
+        ctx.globalAlpha=e; ctx.fillStyle="#171533";
+        [0.58,0.68,0.78].forEach((fx,i)=>{
+          const cw=W*0.05, ch=(12+i*3)*SCL;
+          ctx.fillRect(fx*W-cw/2,gy-ch,cw,ch);
+        });
+        ctx.strokeStyle="rgba(200,210,255,.3)"; ctx.lineWidth=Math.max(1,1.4*SCL);
+        ctx.beginPath(); ctx.moveTo(0,gy+2*SCL); ctx.lineTo(W,gy+2*SCL); ctx.stroke();
+        ctx.globalAlpha=1;
+        break;
+      }
+      case "cake": { // Worli Sea Face — sea wall, skyline towers, big low moon for candles
+        pScBuildings(gy,7,26*SCL,60*SCL,"#12112a",0.15+0.75*e);
+        drawMoon(W*0.66, gy-H*0.05, H*0.10, e);
+        ctx.globalAlpha=e; ctx.strokeStyle="rgba(155,140,220,.35)"; ctx.lineWidth=Math.max(1,2*SCL);
+        ctx.beginPath(); ctx.moveTo(0,gy+3*SCL); ctx.lineTo(W,gy+3*SCL); ctx.stroke();
+        ctx.globalAlpha=1;
+        break;
+      }
+      case "finale": { // back to Thane — calm low suburban skyline, soft pink pre-dawn glow
+        ctx.globalAlpha=e;
+        const pg=ctx.createLinearGradient(0,gy-H*0.22,0,gy+4);
+        pg.addColorStop(0,"rgba(255,170,150,0)"); pg.addColorStop(1,"rgba(255,170,150,.28)");
+        ctx.fillStyle=pg; ctx.fillRect(0,gy-H*0.22,W,H*0.22+4);
+        ctx.globalAlpha=1;
+        pScBuildings(gy,10,10*SCL,20*SCL,"#1a1733",0.1+0.75*e);
+        break;
+      }
+    }
+    ctx.restore();
+    /* place name/vibe shown via the clean #placeBanner (persists while parked);
+       the canvas label collided with the hero, so it's intentionally omitted. */
+  }
+
   function drawCabin(){
     /* windshield vignette */
     const vg=ctx.createLinearGradient(0,0,0,H*0.3);
@@ -1874,7 +2113,12 @@ const Journey=(function(){
       ctx.restore();
     }
     if(sunAnimating || sunriseDone) drawSun(W*0.62, horizonY, sunProgress);
-    drawHills();
+    if(drip && (drip.phase==="arrive" || drip.phase==="await")){
+      const tIn = reduceMotion ? 1 : Math.min(1, drip.estT/PLACE_ESTABLISH);
+      drawPlaceScene(CARDS[drip.n].id, tIn, ts);
+    } else {
+      drawHills();
+    }
     drawRoadRows();
     /* world objects far-to-near so closer ones overlap correctly */
     const objs=[];

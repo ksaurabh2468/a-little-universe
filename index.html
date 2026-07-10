@@ -158,10 +158,12 @@
     box-shadow:0 0 6px 1px rgba(255,209,102,.8)}
   .countdown{
     display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);
-    border-radius:999px;padding:8px 14px;font-size:13px;color:var(--muted)
+    border-radius:999px;padding:6px 14px 6px 6px;font-size:13px;color:var(--muted)
   }
   .countdown b{color:var(--ink)}
-  .countdown .dot{width:8px;height:8px;border-radius:50%;background:var(--mint);box-shadow:0 0 10px var(--mint)}
+  .night-clock{width:38px;height:38px;display:block;border-radius:50%;box-shadow:0 0 0 1px var(--line),0 4px 10px rgba(0,0,0,.35)}
+  .countdown .cd-text{display:flex;flex-direction:column;line-height:1.3}
+  .countdown .cd-label{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);opacity:.85}
 
   .hero{margin:26px 0 30px}
   .hero .eyebrow{color:var(--coral)}
@@ -221,13 +223,13 @@
   /* ---------- Scene transition wipe ("stepping into the place") ---------- */
   #sceneWipe{
     position:fixed;inset:0;z-index:250;pointer-events:none;display:grid;place-items:center;
-    background:radial-gradient(closest-side, rgba(255,226,170,.96), rgba(255,138,88,.94) 55%, rgba(20,9,18,.98) 100%);
+    background:radial-gradient(closest-side, rgba(255,209,102,.55), rgba(90,58,120,.92) 45%, rgba(11,10,31,.99) 100%);
     clip-path:circle(0% at 50% 50%);transition:clip-path .32s cubic-bezier(.4,0,.2,1);
   }
   .wipe-label{
-    font-family:var(--display);font-size:clamp(19px,4.4vw,28px);color:#2a1206;text-align:center;padding:0 26px;
+    font-family:var(--display);font-size:clamp(19px,4.4vw,28px);color:var(--ink);text-align:center;padding:0 26px;
     opacity:0;transform:translateY(6px);transition:opacity .2s ease,transform .2s ease;
-    text-shadow:0 2px 14px rgba(255,255,255,.4);
+    text-shadow:0 2px 14px rgba(0,0,0,.6);
   }
   #sceneWipe.wipe-label-on .wipe-label{opacity:1;transform:translateY(0)}
   @media (prefers-reduced-motion: reduce){
@@ -743,14 +745,24 @@
   #driveAgain:hover{border-color:var(--gold);color:var(--ink)}
   .card.pre-arrival{opacity:0;transform:translateY(18px) scale(.92);pointer-events:none}
   #grid.stops-hidden{display:none}
+  /* completed stops fold away (their chip up top becomes the way back in) so
+     the grid doesn't just keep growing — especially cramped on mobile, where
+     it's one big vertical stack. #grid.reveal-all (set once the user has ever
+     clicked the stops toggle) lifts this and shows the full history again. */
+  .card.tour-done{display:none}
+  #grid.reveal-all .card.tour-done{display:flex}
   .moon-hint{cursor:pointer}
   .journey-hud{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
     padding:10px 14px;background:rgba(23,22,51,.72);backdrop-filter:blur(6px)}
   .stops{display:flex;gap:6px;flex-wrap:wrap}
   .stop-chip{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:13px;
-    background:#0c0a24;border:1px solid var(--line);opacity:.35;filter:grayscale(1);
-    transition:opacity .4s ease,filter .4s ease,box-shadow .4s ease}
+    background:#0c0a24;border:1px solid var(--line);opacity:.35;filter:grayscale(1);padding:0;
+    font-family:inherit;appearance:none;cursor:default;
+    transition:opacity .4s ease,filter .4s ease,box-shadow .4s ease,transform .15s}
   .stop-chip.visited{opacity:1;filter:none;box-shadow:0 0 0 2px var(--gold),0 0 10px rgba(255,209,102,.55)}
+  .stop-chip:not(:disabled){cursor:pointer}
+  .stop-chip:not(:disabled):hover{transform:scale(1.14)}
+  .stop-chip:not(:disabled):focus-visible{outline:2px solid var(--gold);outline-offset:2px}
   .stops-count{font-family:var(--display);color:var(--gold);font-size:12.5px;font-weight:700;white-space:nowrap}
 
   /* ---------- living sky page overlay (fixed, behind content, above starfield) ---------- */
@@ -791,6 +803,25 @@
     border-radius:50%;overflow:hidden;border:2px solid var(--line);box-shadow:var(--shadow);
     animation:scenebadgein .4s cubic-bezier(.2,.8,.2,1.2)}
   @keyframes scenebadgein{from{opacity:0;transform:scale(.6) translateY(-8px)}to{opacity:1;transform:none}}
+  #headerAvatarSlot{cursor:pointer}
+
+  /* ---------- avatar gallery (all 8 stickers, opened from the header avatar) ---------- */
+  #avatarGallery{position:fixed;inset:0;z-index:130;display:none;place-items:center;padding:24px;
+    background:rgba(7,6,20,.92);backdrop-filter:blur(6px)}
+  #avatarGallery.on{display:grid;animation:fade .3s ease}
+  #avatarGallery .ag-card{max-width:640px;width:100%;text-align:center}
+  #avatarGallery h3{font-family:var(--display);font-size:22px;margin:0 0 6px}
+  #avatarGallery p{color:var(--muted);font-size:13.5px;margin:0 0 20px}
+  #avatarGallery .ag-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  @media(max-width:520px){#avatarGallery .ag-grid{grid-template-columns:repeat(2,1fr)}}
+  #avatarGallery .ag-grid button{border:1px solid var(--line);background:var(--panel);border-radius:16px;
+    padding:10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;transition:.2s}
+  #avatarGallery .ag-grid button:hover{border-color:var(--violet);transform:translateY(-3px)}
+  #avatarGallery .ag-grid img{width:100%;aspect-ratio:1/1;object-fit:cover;object-position:center 70%;border-radius:50%}
+  #avatarGallery .ag-grid span{font-size:11.5px;color:var(--muted);text-transform:capitalize}
+  #avatarGalleryClose{position:fixed;top:18px;right:18px;width:44px;height:44px;border-radius:50%;
+    background:var(--panel);border:1px solid var(--line);color:var(--ink);font-size:18px;cursor:pointer;z-index:131}
+  #avatarGalleryClose:hover{border-color:var(--coral)}
 
   @media (prefers-reduced-motion: reduce){
     *{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.05ms!important}
@@ -869,7 +900,10 @@
 <main class="wrap" id="hub" aria-hidden="true">
   <div class="topline">
     <div class="brand"><div class="planet"><span class="moon-orbit"><span class="moon"></span></span></div><span class="avatar-badge-wrap"><div class="avatar-badge" id="headerAvatarSlot"></div><span class="moon-orbit"><span class="moon"></span></span></span><b>Birthday Universe</b></div>
-    <div class="countdown"><span class="dot"></span><span id="cd" class="tnum">—</span></div>
+    <div class="countdown">
+      <canvas id="nightClockCv" class="night-clock" width="76" height="76" aria-hidden="true"></canvas>
+      <span class="cd-text"><span class="cd-label" id="cdLabel">til dawn</span><span id="cd" class="tnum">—</span></span>
+    </div>
   </div>
 
   <section class="hero">
@@ -1470,6 +1504,53 @@ CARDS.forEach(cd=>{
   grid.appendChild(b);
 });
 
+/* ============ NIGHT CLOCK (header) ============
+   Analog dial in the header pill — NOT a real-time clock. Its hands track
+   progress through the drive: the dial starts at 11:00 (dusk) and each
+   completed stop nudges it forward half an hour, landing exactly on 17:00
+   (dawn) once all CARDS.length stops are done. Journey.refreshChips() below
+   calls setStops() on every visit/reset. Canvas (not clip-path+border) per
+   the geometry-fiddly rule — same pattern as the hourglass above. */
+const NightClock=(function(){
+  const cv=$("#nightClockCv"); if(!cv) return { setStops(){} };
+  const g=cv.getContext("2d"), W=cv.width, H=cv.height, cx=W/2, cy=H/2, R=W/2-4;
+  const nightHours=new Set([11,12,1,2,3,4,5]);
+  const START_MIN=11*60, STEP_MIN=30, END_MIN=17*60;
+  let shown=START_MIN, target=START_MIN;
+  function drawHand(ang,len,width,color){
+    g.strokeStyle=color; g.lineWidth=width; g.lineCap="round";
+    g.beginPath(); g.moveTo(cx,cy); g.lineTo(cx+Math.cos(ang)*len,cy+Math.sin(ang)*len); g.stroke();
+  }
+  function render(){
+    shown += (target-shown)*0.08;
+    if(Math.abs(target-shown)<0.05) shown=target;
+    const totalMin=shown, h=Math.floor(totalMin/60)%12 || 12, m=totalMin%60;
+    g.clearRect(0,0,W,H);
+    const grad=g.createRadialGradient(cx,cy,2,cx,cy,R);
+    grad.addColorStop(0,"#221f47"); grad.addColorStop(1,"#14122e");
+    g.fillStyle=grad; g.beginPath(); g.arc(cx,cy,R,0,Math.PI*2); g.fill();
+    g.strokeStyle="#FFD166"; g.lineWidth=2.5; g.stroke();
+    for(let i=1;i<=12;i++){
+      const ang=(i/12)*Math.PI*2 - Math.PI/2;
+      const bright=nightHours.has(i);
+      const tx=cx+Math.cos(ang)*(R-11), ty=cy+Math.sin(ang)*(R-11);
+      g.fillStyle=bright?"#FFD166":"rgba(167,163,201,.45)";
+      g.font=(bright?"bold ":"")+Math.round(R*0.24)+"px system-ui, sans-serif";
+      g.textAlign="center"; g.textBaseline="middle";
+      g.fillText(String(i),tx,ty);
+    }
+    drawHand(((h+m/60)/12)*Math.PI*2 - Math.PI/2, R*0.5, 3.5, "#FFD166");
+    drawHand((m/60)*Math.PI*2 - Math.PI/2, R*0.72, 2.5, "#F5F3FF");
+    g.fillStyle="#FFD166"; g.beginPath(); g.arc(cx,cy,2.5,0,Math.PI*2); g.fill();
+    requestAnimationFrame(render);
+  }
+  requestAnimationFrame(render);
+  function setStops(done,total){
+    target = done>=total ? END_MIN : Math.min(END_MIN, START_MIN+done*STEP_MIN);
+  }
+  return { setStops };
+})();
+
 /* ============ JOURNEY STRIP — "The Night Drive" ============
    A canvas band above the hub grid: rolling scenery + a driving car, ten
    roadside "stops" (one per card) that light up as their scene is visited,
@@ -1514,17 +1595,33 @@ const Journey=(function(){
   let sunriseDone = localStorage.getItem("bday_sunrise_done")==="1";
 
   const chips=CARDS.map(cd=>{
-    const c=document.createElement("span");
+    const c=document.createElement("button");
+    c.type="button";
     c.className="stop-chip"+(visited.indexOf(cd.id)!==-1?" visited":"");
-    c.textContent=cd.ico; c.title=cd.title;
+    c.textContent=cd.ico; c.title=cd.title; c.setAttribute("aria-label","Revisit "+cd.title);
+    c.disabled=true; // enabled in refreshChips() once that stop is actually visited
+    c.addEventListener("click",()=>arrive(cd.id, cd.ico));
     if(stopsEl) stopsEl.appendChild(c);
     return {id:cd.id, el:c};
   });
   function refreshChips(){
-    chips.forEach(c=>c.el.classList.toggle("visited", visited.indexOf(c.id)!==-1));
+    chips.forEach(c=>{
+      const isVisited=visited.indexOf(c.id)!==-1;
+      c.el.classList.toggle("visited", isVisited);
+      c.el.disabled=!isVisited;
+    });
+    /* a done stop's card folds away — the chip above becomes its way back in —
+       so the grid doesn't just keep growing as more stops are completed.
+       #grid.reveal-all (set once the stops toggle is ever used) shows the
+       full history again regardless. */
+    CARDS.forEach((cd,i)=>{
+      const el=cardEls()[i]; if(!el) return;
+      el.classList.toggle("tour-done", visited.indexOf(cd.id)!==-1);
+    });
     if(countEl) countEl.textContent="Stops: "+visited.length+"/"+CARDS.length;
     /* nothing ever locks — revisits always work; this just offers a fresh night */
     if(againBtn) againBtn.hidden = visited.length<CARDS.length;
+    NightClock.setStops(visited.length, CARDS.length);
   }
   refreshChips();
 
@@ -1551,7 +1648,7 @@ const Journey=(function(){
     if(!drip) return;
     const cur=CARDS[drip.n];
     if(!cur || cur.id!==id) return;
-    drip.n++;
+    drip.n=nextUnvisitedIndex(drip.n+1);
     if(drip.n>=CARDS.length){ finishIntro(false); return; }
     startDriveLeg();
   }
@@ -1691,21 +1788,30 @@ const Journey=(function(){
   }
   if(openingSkipBtn) openingSkipBtn.addEventListener("click", finishOpeningCine);
 
-  /* ---------- completion-gated drip: one stop at a time, in CARDS order. A
+  /* ---------- standing auto-tour: one stop at a time, in CARDS order. A
      destination sign grows from the horizon (reusing drawSignAt) as the car
      cruises toward it — phase "drive" — then the car parks on arrival —
      phase "arrive" — which reveals that stop's card, shows the place banner,
      and starts the ~2.5s "place scene" establish (see drawPlaceScene). Once
-     established the phase settles into "await": parked, holding, doing
-     nothing further until the user opens that card's scene and closes it.
-     closeScene() -> Journey.markVisited(id) -> advanceDrip(id) is the ONLY
-     thing that moves the drip on to the next stop (or, on the finale, ends
-     story mode) — there is no time-based auto-advance between stops. Paced
+     established the phase settles into "await": parked, holding the banner —
+     then, after AUTOPLAY_DWELL more, the car moves itself on to the next
+     unvisited stop (see the "await" branch in update() below), marking this
+     one visited along the way. The user can still open the parked card's
+     scene manually at any time — closeScene() -> Journey.markVisited(id) ->
+     advanceDrip(id) fires the exact same advance early, which is a no-op if
+     the auto-timer already fired first (markVisited is dedup'd on id). Paced
      with real-time deltas (dt, from performance.now() in update() below), NOT
-     setInterval — so "drive"/"arrive" naturally pause whenever update() isn't
-     running, i.e. while a scene is open or the tab is hidden. */
-  const DRIP_LOOKAHEAD_PERS=0.028, PLACE_ESTABLISH=2500;
+     setInterval — so "drive"/"arrive"/"await" naturally pause whenever
+     update() isn't running, i.e. while a scene is open or the tab is hidden. */
+  const DRIP_LOOKAHEAD_PERS=0.028, PLACE_ESTABLISH=2500, AUTOPLAY_DWELL=10000;
   let drip=null;
+  /* first CARDS index at or after fromN that isn't visited yet — lets the
+     drip skip over stops the user already opened manually (out of order, or
+     in an earlier session) instead of re-visiting them. */
+  function nextUnvisitedIndex(fromN){
+    for(let i=fromN;i<CARDS.length;i++){ if(visited.indexOf(CARDS[i].id)===-1) return i; }
+    return CARDS.length;
+  }
   function startDriveLeg(){
     introSeq={ i:drip.n, sign:{ emoji:CARDS[drip.n].ico, z: camZ + DEPTH/DRIP_LOOKAHEAD_PERS } };
     drip.phase="drive"; drip.estT=0;
@@ -1713,16 +1819,23 @@ const Journey=(function(){
     placeBannerHide(); // clear the last stop's banner while we drive to the next
   }
   function startDrip(){
-    drip={ n:0, phase:"drive", estT:0 };
+    const n=nextUnvisitedIndex(0);
+    if(n>=CARDS.length) return; // nothing left to auto-tour
+    drip={ n, phase:"drive", estT:0 };
     startDriveLeg();
     if(skipBtn) skipBtn.hidden=false;
   }
 
-  /* ---------- staged intro: cards hide, the opening plays, then the drip
-     delivers them one at a time. Under reduceMotion, introPending() is false
-     so beginIntro() is a no-op and cards just render normally (see
-     cascadeEntrance()) — the accessible "reveal everything at once" path. ---------- */
-  function introPending(){ return !introDone && !reduceMotion; }
+  /* ---------- staged intro + standing auto-tour kickoff: cards for
+     not-yet-visited stops hide, then the drip delivers them one at a time.
+     The one-time cinematic ("Thane. tonight...") only plays on the very
+     first-ever entry (introDone false); every later entry into the hub —
+     as long as stops remain unvisited — skips straight to startDrip() so
+     the tour keeps auto-advancing without requiring a manual tap into each
+     card. Under reduceMotion, introPending() is false so beginIntro() is a
+     no-op and cards just render normally (see cascadeEntrance()) — the
+     accessible "reveal everything at once" path. ---------- */
+  function introPending(){ return !reduceMotion && visited.length<CARDS.length; }
   function cardEls(){ return $$("#grid .card"); }
   function revealCard(el, animate){
     if(!el || !el.classList.contains("pre-arrival")) return;
@@ -1733,8 +1846,12 @@ const Journey=(function(){
   }
   function beginIntro(){
     if(!introPending()) return;
-    cardEls().forEach(el=>el.classList.add("pre-arrival"));
-    startOpeningCine();
+    CARDS.forEach((cd,i)=>{
+      if(visited.indexOf(cd.id)!==-1) return; // already seen — leave it visible
+      const el=cardEls()[i]; if(el) el.classList.add("pre-arrival");
+    });
+    if(!introDone) startOpeningCine();
+    else startDrip();
   }
   function finishIntro(revealRest){
     if(revealRest) cardEls().forEach(el=>revealCard(el,false));
@@ -1782,9 +1899,13 @@ const Journey=(function(){
   if(againBtn) againBtn.addEventListener("click",resetNight);
   if(resetBtn) resetBtn.addEventListener("click",resetNight);
 
-  /* ---------- hide/show the destination cards to enjoy the open road ---------- */
+  /* ---------- hide/show the destination cards to enjoy the open road. Any
+     use of this button also permanently lifts the tour-done declutter for
+     this visit (see .card.tour-done above) — it's the "show all" escape
+     hatch back to the full history, chips-only revisit aside. ---------- */
   if(toggleBtn) toggleBtn.addEventListener("click",()=>{
     const g=$("#grid"); const hidden=g.classList.toggle("stops-hidden");
+    g.classList.add("reveal-all");
     toggleBtn.textContent = hidden ? "Show stops" : "Hide stops";
     if(!hidden && !reduceMotion) g.animate([{opacity:0,transform:"translateY(10px)"},{opacity:1,transform:"none"}],{duration:340,easing:"cubic-bezier(.2,.9,.3,1.15)"});
   });
@@ -1832,12 +1953,15 @@ const Journey=(function(){
 
     roadside.forEach(o=>{ while(o.z-camZ < 2) o.z += N_SIDE*SPAN; });
 
-    /* completion-gated drip: real dt drives the "drive" cruise/brake and the
-       "arrive" establish timer; nothing here ever advances drip.n — only
-       advanceDrip() (called from markVisited on scene close) does that. This
-       loop only runs while frame() is actually calling update() — which it
-       doesn't while a scene is open or the tab is hidden — so both timers
-       pause for free while the user is off doing the stop's actual task. */
+    /* standing auto-tour: real dt drives the "drive" cruise/brake, the
+       "arrive" establish timer, and the "await" dwell — the await branch
+       below calls markVisited() itself once AUTOPLAY_DWELL elapses, which
+       is what actually advances drip.n (via advanceDrip()). Manually opening
+       and closing the parked stop's scene calls the same markVisited() path
+       early. This loop only runs while frame() is actually calling update()
+       — which it doesn't while a scene is open or the tab is hidden — so
+       every drip timer pauses for free whenever the user is off doing a
+       stop's actual task (or the tab is backgrounded). */
     if(drip){
       if(drip.phase==="drive" && introSeq){
         const p=persOf(introSeq.sign.z);
@@ -1852,9 +1976,14 @@ const Journey=(function(){
       } else if(drip.phase==="arrive"){
         drip.estT += dt;
         speedTarget=0;
-        if(reduceMotion || drip.estT>=PLACE_ESTABLISH) drip.phase="await";
+        if(reduceMotion || drip.estT>=PLACE_ESTABLISH){ drip.phase="await"; drip.awaitT=0; }
       } else if(drip.phase==="await"){
         speedTarget=0;
+        /* sit parked here, banner up, for AUTOPLAY_DWELL — then move on by
+           ourselves. This is what turns the one-time intro drip into a
+           standing auto-tour instead of stalling forever waiting for a tap. */
+        drip.awaitT += dt;
+        if(drip.awaitT>=AUTOPLAY_DWELL) markVisited(CARDS[drip.n].id);
       }
     }
 
@@ -3378,8 +3507,10 @@ const Montage=(function(){
 
   function tick(){
     const now=Date.now(), diff=target-now;
+    const cdLabel=$("#cdLabel");
     if(diff<=0){
       el.innerHTML="🎉 It's your day!";
+      if(cdLabel) cdLabel.textContent="";
       if(btD){ [btD,btH,btM,btS].forEach(n=>n.textContent="0"); }
       unlockVisual();
       return;
@@ -3507,8 +3638,9 @@ if(_leverBtn) _leverBtn.addEventListener("click",()=>Stickers.fire("laughing",18
   const sceneAvatar={
     wrapped:STK("thumbs-up"), mixtape:STK("waving"), wall:PORTRAIT, montage:STK("shy-thinking"),
     machine:STK("laughing"), scratch:STK("surprised"), game:STK("facepalm-2"), wheel:STK("facepalm"),
-    cake:STK("surprised"), finale:STK("heart-hands")
+    cake:STK("surprised"), finale:STK("heart-hands"), momos:STK("laughing")
   };
+  const ALL_STICKERS=["heart-hands","thumbs-up","laughing","shy-thinking","waving","facepalm","facepalm-2","surprised"];
   function imgHTML(src,alt){ return '<img src="'+src+'" alt="'+alt+'" style="width:100%;height:100%;object-fit:cover;object-position:center 70%;border-radius:50%;display:block">'; }
 
   const headerSlot=$("#headerAvatarSlot");
@@ -3553,6 +3685,36 @@ if(_leverBtn) _leverBtn.addEventListener("click",()=>Stickers.fire("laughing",18
       }
     };
   }
+
+  /* ---------- avatar gallery: tap the header avatar to see all 8 expressions ---------- */
+  let galleryEl=null;
+  function buildGallery(){
+    if(galleryEl) return galleryEl;
+    galleryEl=document.createElement("div");
+    galleryEl.id="avatarGallery"; galleryEl.setAttribute("aria-hidden","true");
+    const grid=ALL_STICKERS.map(n=>
+      '<button type="button" data-name="'+n+'"><img src="'+STK(n)+'" alt="'+n+'"><span>'+n.replace("-"," ")+'</span></button>'
+    ).join("");
+    galleryEl.innerHTML='<button id="avatarGalleryClose" aria-label="Close">✕</button>'+
+      '<div class="ag-card"><h3>'+CONFIG.name+'’s little universe of faces</h3>'+
+      '<p>Tap one to say hi.</p><div class="ag-grid">'+grid+'</div></div>';
+    document.body.appendChild(galleryEl);
+    galleryEl.querySelector("#avatarGalleryClose").addEventListener("click",closeGallery);
+    galleryEl.addEventListener("click",e=>{ if(e.target===galleryEl) closeGallery(); });
+    galleryEl.querySelectorAll(".ag-grid button").forEach(btn=>{
+      btn.addEventListener("click",()=>{ closeGallery(); Stickers.fire(btn.dataset.name,2400); });
+    });
+    return galleryEl;
+  }
+  function openGallery(){ buildGallery().classList.add("on"); galleryEl.setAttribute("aria-hidden","false"); }
+  function closeGallery(){ if(galleryEl){ galleryEl.classList.remove("on"); galleryEl.setAttribute("aria-hidden","true"); } }
+  if(headerSlot){
+    headerSlot.setAttribute("role","button"); headerSlot.setAttribute("tabindex","0");
+    headerSlot.setAttribute("aria-label","See all of "+CONFIG.name+"'s avatars");
+    headerSlot.addEventListener("click",openGallery);
+    headerSlot.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();openGallery();} });
+  }
+  addEventListener("keydown",e=>{ if(e.key==="Escape" && galleryEl && galleryEl.classList.contains("on")) closeGallery(); });
 })();
 </script>
 </body>

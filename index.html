@@ -92,11 +92,11 @@
   .intro-title{font-family:var(--display);font-size:clamp(30px,6vw,52px)}
   .intro-title b{color:var(--gold)}
 
-  /* ---------- Access gate ---------- */
+  /* ---------- Access gate (modal, opened by tapping the gift box) ---------- */
   #gate{
-    position:fixed;inset:0;z-index:200;display:grid;place-items:center;
-    background:radial-gradient(900px 600px at 50% 20%, rgba(255,107,157,.14), transparent 60%), var(--bg);
-    padding:20px;transition:opacity .3s ease;
+    position:fixed;inset:0;z-index:200;display:none;place-items:center;
+    background:radial-gradient(900px 600px at 50% 20%, rgba(255,107,157,.14), transparent 60%), rgba(11,10,31,.92);
+    padding:20px;opacity:1;transition:opacity .25s ease;
   }
   #gate.gone{opacity:0;pointer-events:none}
   .gate-card{
@@ -112,6 +112,8 @@
   }
   #gateInput:focus{outline:2px solid var(--violet);border-color:var(--violet)}
   .gate-err{color:var(--coral);font-size:13px;min-height:16px;margin:0}
+  .gate-cancel{background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;text-decoration:underline;padding:4px;font-family:var(--body)}
+  .gate-cancel:hover{color:var(--ink)}
 
   /* ---------- Hourglass + big timer (pre-unlock home) ---------- */
   .hourglass-wrap{width:88px;height:126px;margin:4px auto 0;position:relative}
@@ -310,12 +312,13 @@
 <div id="gate">
   <div class="gate-card">
     <div class="gate-lock">🔒</div>
-    <div class="eyebrow" style="color:var(--gold)">Restricted</div>
-    <h2>Admins only, for now</h2>
-    <p>This one's under wraps until it's ready. Enter the passcode to preview.</p>
+    <div class="eyebrow" style="color:var(--gold)">Admins only</div>
+    <h2>Enter the passcode</h2>
+    <p>This bit is just for the two of us — for now.</p>
     <input id="gateInput" type="password" placeholder="passcode" autocomplete="off">
-    <button class="btn primary" id="gateBtn">Unlock preview</button>
+    <button class="btn primary" id="gateBtn">Unlock</button>
     <p class="gate-err" id="gateErr"></p>
+    <button class="gate-cancel" id="gateCancel" type="button">Not now</button>
   </div>
 </div>
 
@@ -355,7 +358,7 @@
       <div class="ribbon"></div>
       <div class="body"></div>
     </button>
-    <div class="tap-hint" id="tapHint">Unlocks automatically when the countdown hits zero ⏳</div>
+    <div class="tap-hint" id="tapHint">Tap the gift — insiders know the code 😉</div>
   </div>
 </div>
 
@@ -584,28 +587,35 @@ document.getElementById("scratchReveal").textContent = CONFIG.scratchReveal;
 function toast(msg,ms=3600){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove("show"),ms); }
 
 /* ============ ACCESS GATE ============
-   Client-side soft lock only — keeps casual visitors out, NOT a real security
-   boundary (anyone who views page source sees CONFIG.accessCode). Fine for
-   "don't stumble in by accident"; not fine if the repo/host is public and
-   someone goes looking. See deployment notes for the real-auth option. */
-(function(){
-  const gate=$("#gate"), input=$("#gateInput"), btn=$("#gateBtn"), err=$("#gateErr");
-  if(!gate) return;
-  if(localStorage.getItem("bday_gate_ok")==="1"){ gate.remove(); return; }
-  function tryUnlock(){
-    if(input.value.trim().toLowerCase()===CONFIG.accessCode.toLowerCase()){
-      localStorage.setItem("bday_gate_ok","1");
-      gate.classList.add("gone");
-      setTimeout(()=>gate.remove(),320);
-    } else {
-      err.textContent="That's not it — try again.";
-      gate.querySelector(".gate-card").animate([{transform:"translateX(-6px)"},{transform:"translateX(6px)"},{transform:"translateX(0)"}],{duration:260});
-    }
+   The countdown/hourglass teaser is always public and reveals nothing. Tapping
+   the gift box is what triggers this passcode modal — correct code opens the
+   real experience. Client-side soft lock only — keeps casual visitors out,
+   NOT a real security boundary (anyone who views page source sees
+   CONFIG.accessCode). Fine for "don't stumble in by accident"; not fine if
+   someone goes looking on purpose. */
+const gate=$("#gate"), gateInput=$("#gateInput"), gateBtn=$("#gateBtn"), gateErr=$("#gateErr"), gateCancel=$("#gateCancel");
+function isAdmin(){ return localStorage.getItem("bday_gate_ok")==="1"; }
+function openGate(){
+  gateErr.textContent=""; gateInput.value=""; gate.classList.remove("gone"); gate.style.display="grid";
+  setTimeout(()=>gateInput.focus(),80);
+}
+function closeGate(){
+  gate.classList.add("gone");
+  setTimeout(()=>{ gate.style.display="none"; },260);
+}
+function tryUnlock(){
+  if(gateInput.value.trim().toLowerCase()===CONFIG.accessCode.toLowerCase()){
+    localStorage.setItem("bday_gate_ok","1");
+    closeGate();
+    enter();
+  } else {
+    gateErr.textContent="That's not it — try again.";
+    gate.querySelector(".gate-card").animate([{transform:"translateX(-6px)"},{transform:"translateX(6px)"},{transform:"translateX(0)"}],{duration:260});
   }
-  btn.addEventListener("click",tryUnlock);
-  input.addEventListener("keydown",e=>{ if(e.key==="Enter")tryUnlock(); });
-  setTimeout(()=>input.focus(),300);
-})();
+}
+gateBtn.addEventListener("click",tryUnlock);
+gateInput.addEventListener("keydown",e=>{ if(e.key==="Enter")tryUnlock(); });
+gateCancel.addEventListener("click",closeGate);
 
 /* ============ STARFIELD ============ */
 (function(){
@@ -629,14 +639,12 @@ const Confetti=(function(){
 
 /* ============ INTRO → HUB ============ */
 const box=$("#giftbox"), intro=$("#intro"), hub=$("#hub");
-let giftUnlocked=false;
 function enter(){
-  if(!giftUnlocked){ toast("Not yet — check the countdown above ⏳",2200); return; }
   box.classList.add("open");
   Confetti.burst(160, innerWidth/2, innerHeight*0.42);
   setTimeout(()=>{ intro.classList.add("gone"); hub.setAttribute("aria-hidden","false"); },650);
 }
-box.addEventListener("click",enter);
+box.addEventListener("click",()=>{ isAdmin() ? enter() : openGate(); });
 
 /* ============ BUILD HUB CARDS ============ */
 const grid=$("#grid");
@@ -914,23 +922,27 @@ const Mixtape=(function(){
   return {reset:()=>{ if(playing)stop(); }};
 })();
 
-/* ============ COUNTDOWN + GIFT UNLOCK ============ */
+/* ============ COUNTDOWN + VISUAL UNLOCK ============
+   Purely cosmetic now — the box's glow/dim state and hype copy track the
+   countdown, but access is controlled entirely by the passcode gate above,
+   regardless of what the countdown says. This lets an admin (with the code)
+   in early, and still requires the code from anyone once the countdown ends. */
 (function(){
   const el=$("#cd"), target=new Date(CONFIG.birthday).getTime();
   const btD=$("#bt-d"), btH=$("#bt-h"), btM=$("#bt-m"), btS=$("#bt-s");
   const hype=$("#hype"), tapHint=$("#tapHint"), hourglassWrap=$("#hourglassWrap"), introEyebrow=$("#introEyebrow");
   const hypeLines=["Something's brewing… 👀","The countdown is real.","Good things take a little patience 😉","Almost there.","Not yet… but soon."];
-  let hi=0;
+  let hi=0, visualUnlocked=false;
   function rotateHype(){
-    if(giftUnlocked || !hype)return;
+    if(visualUnlocked || !hype)return;
     hype.style.opacity=0;
     setTimeout(()=>{ hype.textContent=hypeLines[hi=(hi+1)%hypeLines.length]; hype.style.opacity=1; },400);
   }
   setInterval(rotateHype,4200);
 
-  function unlockGift(){
-    if(giftUnlocked)return;
-    giftUnlocked=true;
+  function unlockVisual(){
+    if(visualUnlocked)return;
+    visualUnlocked=true;
     box.classList.remove("locked");
     box.classList.add("unlocked-pulse");
     if(hourglassWrap) hourglassWrap.style.display="none";
@@ -945,7 +957,7 @@ const Mixtape=(function(){
     if(diff<=0){
       el.innerHTML="🎉 It's your day!";
       if(btD){ [btD,btH,btM,btS].forEach(n=>n.textContent="0"); }
-      unlockGift();
+      unlockVisual();
       return;
     }
     const d=Math.floor(diff/864e5), h=Math.floor(diff%864e5/36e5), m=Math.floor(diff%36e5/6e4), s=Math.floor(diff%6e4/1e3);

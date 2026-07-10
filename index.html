@@ -284,6 +284,13 @@
   .montage-dots{position:absolute;left:0;right:0;bottom:18px;z-index:2;display:flex;gap:7px;justify-content:center}
   .montage-dots i{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.3);transition:.3s}
   .montage-dots i.on{background:var(--mint);width:20px;border-radius:5px}
+  .montage-date{position:absolute;top:16px;left:18px;z-index:2;font-family:var(--display);
+    font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);
+    text-shadow:0 2px 10px rgba(0,0,0,.8);opacity:0;transition:opacity .5s}
+  .montage-date.show{opacity:.95}
+  .montage-timeline{position:absolute;left:0;right:0;bottom:0;height:3px;z-index:2;background:rgba(255,255,255,.14)}
+  .montage-timeline i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--coral),var(--gold),var(--mint));
+    transition:width .6s ease}
   .montage-controls{display:flex;gap:12px;justify-content:center;margin-top:20px;flex-wrap:wrap}
   #montageMusic[aria-pressed="true"]{border-color:var(--mint);color:var(--mint)}
 
@@ -542,6 +549,30 @@
   .tracklist li.playing{border-color:var(--gold);color:var(--ink);background:linear-gradient(90deg,rgba(255,209,102,.12),var(--panel))}
   .tracklist li.playing .tnum{color:var(--gold)}
 
+  /* ---------- journey strip (Night Drive) ---------- */
+  .journey{position:relative;margin:8px 0 26px;border:1px solid var(--line);border-radius:20px;overflow:hidden;box-shadow:var(--shadow)}
+  #driveCv{display:block;width:100%;height:200px;background:var(--bg)}
+  @media(max-width:560px){ #driveCv{height:150px} }
+  .journey-hud{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+    padding:10px 14px;background:var(--panel);border-top:1px solid var(--line)}
+  .stops{display:flex;gap:6px;flex-wrap:wrap}
+  .stop-chip{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:13px;
+    background:#0c0a24;border:1px solid var(--line);opacity:.35;filter:grayscale(1);
+    transition:opacity .4s ease,filter .4s ease,box-shadow .4s ease}
+  .stop-chip.visited{opacity:1;filter:none;box-shadow:0 0 0 2px var(--gold),0 0 10px rgba(255,209,102,.55)}
+  .stops-count{font-family:var(--display);color:var(--gold);font-size:12.5px;font-weight:700;white-space:nowrap}
+
+  /* ---------- living sky page overlay (fixed, behind content, above starfield) ---------- */
+  .sky-overlay{position:fixed;inset:0;z-index:1;pointer-events:none;
+    background:linear-gradient(180deg, transparent 35%, var(--sky-glow, rgba(255,170,80,0)) 140%);
+    opacity:.05; transition:opacity 1.2s ease, background 1.2s ease}
+
+  /* ---------- intro tie-in line ---------- */
+  .intro-subhint{color:var(--muted);font-size:12.5px;opacity:.85}
+
+  /* ---------- finale storyline line ---------- */
+  .finale-story{color:var(--muted);font-size:13.5px;line-height:1.55;max-width:48ch;margin:-4px 0 0}
+
   @media (prefers-reduced-motion: reduce){
     *{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.05ms!important}
   }
@@ -563,6 +594,7 @@
 </div>
 
 <canvas id="stars" aria-hidden="true"></canvas>
+<div id="skyOverlay" class="sky-overlay" aria-hidden="true"></div>
 <canvas id="confetti" aria-hidden="true"></canvas>
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="lightbox" aria-hidden="true"><button id="lightboxClose" aria-label="Close">✕</button><figure><img id="lightboxImg" alt=""><figcaption id="lightboxCap"></figcaption></figure></div>
@@ -599,6 +631,7 @@
       <span class="sparkle" aria-hidden="true">✦</span>
     </div>
     <div class="tap-hint" id="tapHint">Tap the gift — insiders know the code 😉</div>
+    <div class="intro-subhint">tonight's plan: a little drive 🚗💨</div>
   </div>
 </div>
 
@@ -610,13 +643,21 @@
   </div>
 
   <section class="hero">
-    <div class="eyebrow">Now entering orbit</div>
+    <div class="eyebrow">The night drive · dusk till dawn</div>
     <h1>Happy Birthday,<br><span class="name" id="heroName">★NAME★</span></h1>
     <p id="heroLine">Welcome to your own little corner of the universe. Nine things to explore, one at a time — tap a card and see what happens. No rush. It's all yours today.</p>
   </section>
 
+  <div class="journey">
+    <canvas id="driveCv" aria-hidden="true"></canvas>
+    <div class="journey-hud">
+      <div class="stops" id="stops"></div>
+      <div class="stops-count" id="stopsCount">Stops: 0/10</div>
+    </div>
+  </div>
+
   <section class="grid" id="grid"></section>
-  <div class="footnote">Made with more effort than I'll admit · tap the planet 🪐 anytime for confetti</div>
+  <div class="footnote">Made with more effort than I'll admit · tap the planet 🪐 anytime for confetti · every stop you visit brings the sunrise closer 🌅</div>
 </main>
 
 <!-- ================= SCENES ================= -->
@@ -693,7 +734,9 @@
     <div class="montage" id="montageStage">
       <div class="montage-frame" id="montageFrame"></div>
       <div class="montage-cap" id="montageCap"></div>
+      <div class="montage-date" id="montageDate"></div>
       <div class="montage-dots" id="montageDots"></div>
+      <div class="montage-timeline"><i id="montageProgress"></i></div>
     </div>
     <div class="montage-controls">
       <button class="btn primary" id="montageBtn">Play ▶</button>
@@ -756,8 +799,9 @@
   <button class="back" data-back>← Orbit</button>
   <div class="scene-inner">
     <div class="finale">
-      <div class="eyebrow" style="color:var(--gold)">One last thing</div>
+      <div class="eyebrow" style="color:var(--gold)">The last stop · sunrise</div>
       <h2>Here's to <span id="finaleName">★NAME★</span></h2>
+      <p class="finale-story">Ten stops. One long night. We drove the whole way here — and it's morning now. It was always going to end at you.</p>
       <p id="finaleMsg">★ Your birthday message goes here. Say the real thing — the one you'd never fit on a card. This is the spot she'll remember. ★</p>
       <button class="btn primary" id="fireworks">Light the fireworks 🎆</button>
     </div>
@@ -772,7 +816,7 @@ const CONFIG = {
   name: "Momo",
   birthday: "2026-07-11T00:00:00+05:30",   // midnight, her day
   accessCode: "MOMO11",                    // change me — client-side soft lock, see note in code
-  heroLine: "Welcome to your own little corner of the universe. Ten things to explore, one at a time — tap a card and see what happens. No rush. It's all yours today.",
+  heroLine: "Get in — seatbelt on. Ten stops between tonight and your birthday sunrise. Pull over wherever looks interesting; the night's all ours.",
 
   // Wrapped slides — keep them punchy & a little funny
   wrapped: [
@@ -849,18 +893,20 @@ const CONFIG = {
 
   // Polaroid wall — only real photos show (add more by dropping files in photos/ and
   // listing them here). Family-safe only for now — see privacy note in code.
+  // Public wall = solo, family-safe shots only ("her site"). Couple photos live behind the
+  // encrypted settings gate (see couplePhotos) so they never sit as plain files in the repo.
   polaroids: [
-    { cap:"caught looking", src:"photos/polaroid-1.jpg" },
-    { cap:"that afternoon", src:"photos/polaroid-2.jpg" },
-    { cap:"just us",        src:"photos/polaroid-3.jpg" }
+    { cap:"always somewhere to be", src:"photos/momo-04.jpg" },
+    { cap:"that cafe afternoon",    src:"photos/momo-06.jpg" },
+    { cap:"that evening out",       src:"photos/momo-30.jpg" }
   ],
 
-  // Cinematic montage — full-screen slideshow with slow pans. Uses these images;
+  // Cinematic montage — full-screen slideshow with slow pans + a progress timeline.
   // add more alongside the polaroids above. Plays the mixtape underneath if audio is set.
   montage: [
-    { src:"photos/polaroid-1.jpg", cap:"the way this year looked" },
-    { src:"photos/polaroid-3.jpg", cap:"the good, ordinary days" },
-    { src:"photos/polaroid-2.jpg", cap:"and every bit of it — you" }
+    { src:"photos/momo-04.jpg",   cap:"the everyday" },
+    { src:"photos/momo-06.jpg",   cap:"little afternoons" },
+    { src:"photos/momo-30.jpg",   cap:"golden hour" }
   ]
 };
 
@@ -1037,10 +1083,365 @@ const grid=$("#grid");
 CARDS.forEach(cd=>{
   const b=document.createElement("button");
   b.className="card fx-"+cd.id; b.style.setProperty("--edge",cd.edge); b.style.setProperty("--glow",cd.glow);
-  b.innerHTML=`<div class="ico">${cd.ico}</div><div><h3>${cd.title}</h3><p>${cd.desc}</p></div><span class="go">Open →</span><span class="fx fx-${cd.id}" aria-hidden="true">${cd.fx||""}</span>`;
-  b.addEventListener("click",()=>openScene(cd.id));
+  b.innerHTML=`<div class="ico">${cd.ico}</div><div><h3>${cd.title}</h3><p>${cd.desc}</p></div><span class="go">Pull over →</span><span class="fx fx-${cd.id}" aria-hidden="true">${cd.fx||""}</span>`;
+  b.addEventListener("click",()=>Journey.arrive(cd.id, cd.ico));
   grid.appendChild(b);
 });
+
+/* ============ JOURNEY STRIP — "The Night Drive" ============
+   A canvas band above the hub grid: rolling scenery + a driving car, ten
+   roadside "stops" (one per card) that light up as their scene is visited,
+   and a sky that warms from night toward sunrise as stops accumulate.
+   Single rAF loop for the whole feature — throttles hard (setTimeout 500ms
+   requeue) whenever the tab is hidden, the intro is still up, or a scene is
+   open, since nothing on screen needs the canvas at those times. */
+const Journey=(function(){
+  const cv=$("#driveCv");
+  if(!cv) return { arrive:(id)=>openScene(id), markVisited:()=>{} };
+  const ctx=cv.getContext("2d");
+  const skyOverlayEl=$("#skyOverlay");
+  const stopsEl=$("#stops"), countEl=$("#stopsCount");
+  let W=0,H=0,roadY=0,roadH=0;
+
+  /* ---------- persisted stop state ---------- */
+  let visited=[];
+  try{ visited=JSON.parse(localStorage.getItem("bday_stops")||"[]"); }catch(e){ visited=[]; }
+  let sunriseDone = localStorage.getItem("bday_sunrise_done")==="1";
+
+  const chips=CARDS.map(cd=>{
+    const c=document.createElement("span");
+    c.className="stop-chip"+(visited.indexOf(cd.id)!==-1?" visited":"");
+    c.textContent=cd.ico; c.title=cd.title;
+    if(stopsEl) stopsEl.appendChild(c);
+    return {id:cd.id, el:c};
+  });
+  function refreshChips(){
+    chips.forEach(c=>c.el.classList.toggle("visited", visited.indexOf(c.id)!==-1));
+    if(countEl) countEl.textContent="Stops: "+visited.length+"/"+CARDS.length;
+  }
+  refreshChips();
+
+  function skyProgress(){ return Math.min(1, visited.length/CARDS.length); }
+
+  function markVisited(id){
+    if(!CARDS.some(c=>c.id===id)) return;
+    if(visited.indexOf(id)!==-1) return;
+    visited.push(id);
+    try{ localStorage.setItem("bday_stops", JSON.stringify(visited)); }catch(e){}
+    refreshChips();
+    applyPageOverlay();
+    if(visited.length>=CARDS.length && !sunriseDone) startSunrise();
+  }
+
+  /* ---------- sky palette: night -> late-night violet -> pre-dawn indigo -> sunrise ---------- */
+  const SKY=[
+    {top:[11,10,31],  horizon:[20,18,58],   glow:[20,18,58]},
+    {top:[14,12,40],  horizon:[52,30,86],   glow:[80,40,110]},
+    {top:[18,17,48],  horizon:[150,90,95],  glow:[210,120,95]},
+    {top:[38,26,66],  horizon:[255,178,86], glow:[255,130,110]}
+  ];
+  function lerp(a,b,t){ return a+(b-a)*t; }
+  function lerpRGB(a,b,t){ return [lerp(a[0],b[0],t),lerp(a[1],b[1],t),lerp(a[2],b[2],t)]; }
+  function rgbStr(c,a){ return "rgba("+(c[0]|0)+","+(c[1]|0)+","+(c[2]|0)+","+(a==null?1:a)+")"; }
+  function skyAt(p){
+    const seg=Math.min(2, Math.floor(p*3)), t=p*3-seg;
+    const a=SKY[seg], b=SKY[seg+1];
+    return { top:lerpRGB(a.top,b.top,t), horizon:lerpRGB(a.horizon,b.horizon,t), glow:lerpRGB(a.glow,b.glow,t) };
+  }
+  function applyPageOverlay(){
+    if(!skyOverlayEl) return;
+    const p=skyProgress(), sky=skyAt(p);
+    skyOverlayEl.style.setProperty("--sky-glow", rgbStr(sky.glow, .9));
+    skyOverlayEl.style.opacity = (0.05 + p*0.4).toFixed(3);
+  }
+  applyPageOverlay();
+
+  /* ---------- sunrise (once, persisted) ---------- */
+  let sunProgress = sunriseDone ? 1 : 0, sunAnimating=false, sunStartTs=null;
+  if(visited.length>=CARDS.length && !sunriseDone){ sunProgress=1; sunriseDone=true; try{localStorage.setItem("bday_sunrise_done","1");}catch(e){} }
+  function startSunrise(){
+    if(reduceMotion){
+      sunProgress=1; sunriseDone=true;
+      try{ localStorage.setItem("bday_sunrise_done","1"); }catch(e){}
+      Confetti.burst(160);
+      return;
+    }
+    sunAnimating=true; sunStartTs=null;
+  }
+
+  /* ---------- DPR-aware sizing ---------- */
+  function computeLayout(){ roadH=H*0.30; roadY=H-roadH; }
+  function resize(){
+    const rect=cv.getBoundingClientRect();
+    const dpr=Math.min(2, window.devicePixelRatio||1);
+    W=Math.max(1, Math.round(rect.width)); H=Math.max(1, Math.round(rect.height));
+    cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    computeLayout();
+  }
+  resize();
+  let resizeT; addEventListener("resize",()=>{ clearTimeout(resizeT); resizeT=setTimeout(resize,150); });
+
+  /* ---------- scene state ---------- */
+  let scroll=0, speed=1, speedTarget=1, wheelRot=0, lastTs=null;
+  let sign={active:false,x:0,emoji:""};
+  let arrival=null; // {id, emoji, t0, dur}
+  const stars=Array.from({length:14},()=>({x:Math.random(), y:Math.random()*0.5, r:Math.random()*1.2+.4, ph:Math.random()*Math.PI*2}));
+
+  function easeOutCubic(t){ return 1-Math.pow(1-t,3); }
+
+  function arrive(id, emoji){
+    if(reduceMotion){ openScene(id); return; }
+    if(arrival && arrival.id===id) return;
+    arrival={ id, emoji, t0:null, dur:900 };
+  }
+
+  function update(ts){
+    if(lastTs==null) lastTs=ts;
+    const dt=Math.min(50, ts-lastTs); lastTs=ts;
+
+    if(arrival){
+      if(arrival.t0==null) arrival.t0=ts;
+      const p=Math.min(1,(ts-arrival.t0)/arrival.dur);
+      const carX=W*0.28, startX=W+60, stopX=carX+52;
+      sign.active=true; sign.emoji=arrival.emoji;
+      sign.x = startX + (stopX-startX)*easeOutCubic(p);
+      speedTarget = p<0.6 ? 3 : Math.max(0, 3*(1-(p-0.6)/0.4));
+      if(p>=1){
+        const id=arrival.id;
+        arrival=null; sign.active=false; speedTarget=0;
+        openScene(id);
+      }
+    } else {
+      speedTarget=1;
+    }
+
+    if(!reduceMotion){
+      speed += (speedTarget-speed)*0.08;
+      scroll += speed*40*(dt/1000);
+      wheelRot += speed*0.12*(dt/16.7);
+    } else {
+      speed=0;
+    }
+
+    if(sunAnimating){
+      if(sunStartTs==null) sunStartTs=ts;
+      const p=Math.min(1,(ts-sunStartTs)/3000);
+      sunProgress=p;
+      if(p>=1){
+        sunAnimating=false; sunriseDone=true;
+        try{ localStorage.setItem("bday_sunrise_done","1"); }catch(e){}
+        Confetti.burst(160);
+        applyPageOverlay();
+      }
+    }
+  }
+
+  /* ---------- drawing ---------- */
+  function roundRectPath(x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+  }
+  function drawMoon(cx,cy,r,alpha){
+    if(alpha<=0.01) return;
+    ctx.save(); ctx.globalAlpha=alpha;
+    const glow=ctx.createRadialGradient(cx,cy,0,cx,cy,r*3);
+    glow.addColorStop(0,"rgba(245,243,255,.35)"); glow.addColorStop(1,"rgba(245,243,255,0)");
+    ctx.fillStyle=glow; ctx.beginPath(); ctx.arc(cx,cy,r*3,0,7); ctx.fill();
+    ctx.fillStyle="#F5F3FF"; ctx.beginPath(); ctx.arc(cx,cy,r,0,7); ctx.fill();
+    ctx.fillStyle="rgba(11,10,31,.35)"; ctx.beginPath(); ctx.arc(cx+r*0.35,cy-r*0.15,r*0.9,0,7); ctx.fill();
+    ctx.restore();
+  }
+  function drawSun(cx,horizonY,p){
+    if(p<=0.01) return;
+    const r=H*0.11, cy=horizonY + r*0.6 - r*1.8*easeOutCubic(p);
+    ctx.save();
+    const glow=ctx.createRadialGradient(cx,cy,0,cx,cy,r*3.2);
+    glow.addColorStop(0,"rgba(255,190,110,.55)"); glow.addColorStop(1,"rgba(255,190,110,0)");
+    ctx.fillStyle=glow; ctx.beginPath(); ctx.arc(cx,cy,r*3.2,0,7); ctx.fill();
+    const grad=ctx.createLinearGradient(cx,cy-r,cx,cy+r);
+    grad.addColorStop(0,"#FFE29A"); grad.addColorStop(1,"#FF8F6B");
+    ctx.fillStyle=grad; ctx.beginPath(); ctx.arc(cx,cy,r,0,7); ctx.fill();
+    ctx.restore();
+  }
+  function drawHills(offset){
+    const hillY=roadY-H*0.02, period=Math.max(160,W*0.9);
+    ctx.fillStyle="#14122e";
+    for(let i=-1;i<=Math.ceil(W/period)+1;i++){
+      const baseX=i*period-(offset%period);
+      ctx.beginPath();
+      ctx.moveTo(baseX-period*0.2, hillY);
+      ctx.quadraticCurveTo(baseX+period*0.25, hillY-H*0.22, baseX+period*0.55, hillY-H*0.06);
+      ctx.quadraticCurveTo(baseX+period*0.8, hillY+H*0.05, baseX+period*1.1, hillY);
+      ctx.lineTo(baseX+period*1.1, roadY+4);
+      ctx.lineTo(baseX-period*0.2, roadY+4);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+  function drawMid(offset){
+    const period=110, poleTopY=roadY-H*0.34;
+    ctx.fillStyle="#1d1a3f";
+    for(let x=-period; x<W+period; x+=period){
+      const px=x-(offset%period);
+      ctx.fillRect(px-1.5, poleTopY, 3, H*0.34);
+      ctx.fillRect(px-9, poleTopY+2, 18, 2.5);
+    }
+    ctx.beginPath();
+    let first=true;
+    for(let x=-period; x<W+period*2; x+=period){
+      const px=x-(offset%period), topY=poleTopY+2;
+      if(first){ ctx.moveTo(px,topY); first=false; }
+      else{ ctx.quadraticCurveTo(px-period/2, topY+10, px, topY); }
+    }
+    ctx.strokeStyle="rgba(160,155,200,.35)"; ctx.lineWidth=1; ctx.stroke();
+    const tperiod=170;
+    for(let x=-tperiod; x<W+tperiod; x+=tperiod){
+      const flip=(Math.floor(x/tperiod)%2)*40;
+      const tx=x-(offset%tperiod)+flip, th=H*0.16, tw=H*0.11, ty=roadY;
+      ctx.fillStyle="#1d1a3f";
+      ctx.beginPath(); ctx.moveTo(tx,ty-th); ctx.lineTo(tx-tw/2,ty); ctx.lineTo(tx+tw/2,ty); ctx.closePath(); ctx.fill();
+    }
+  }
+  function drawSign(){
+    if(!sign.active) return;
+    const postW=4, postH=H*0.30, boardW=44, boardH=34, baseY=roadY;
+    ctx.save(); ctx.translate(sign.x,0);
+    ctx.fillStyle="#1d1a3f"; ctx.fillRect(-postW/2, baseY-postH, postW, postH);
+    ctx.fillStyle="#171633"; ctx.strokeStyle="#2C2A52"; ctx.lineWidth=1.5;
+    roundRectPath(-boardW/2, baseY-postH-boardH+6, boardW, boardH, 8);
+    ctx.fill(); ctx.stroke();
+    ctx.font=Math.round(boardH*0.55)+"px system-ui"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(sign.emoji, 0, baseY-postH-boardH/2+6);
+    ctx.restore();
+  }
+  function drawRoad(offset){
+    ctx.fillStyle="#0c0a24"; ctx.fillRect(0,roadY,W,roadH);
+    ctx.strokeStyle="rgba(255,255,255,.12)"; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(0,roadY+4); ctx.lineTo(W,roadY+4); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,roadY+roadH-4); ctx.lineTo(W,roadY+roadH-4); ctx.stroke();
+    const midY=roadY+roadH/2, dashLen=26, gap=20, period=dashLen+gap;
+    ctx.setLineDash([dashLen,gap]); ctx.lineDashOffset=-(offset%period);
+    ctx.strokeStyle="#FFD166"; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.moveTo(0,midY); ctx.lineTo(W,midY); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  function drawWheel(dx,cy,r){
+    ctx.save(); ctx.translate(dx,cy);
+    ctx.fillStyle="#14122e"; ctx.beginPath(); ctx.arc(0,0,r,0,7); ctx.fill();
+    ctx.strokeStyle="#171633"; ctx.lineWidth=2; ctx.stroke();
+    ctx.save(); ctx.rotate(wheelRot);
+    ctx.strokeStyle="rgba(245,243,255,.35)"; ctx.lineWidth=1.5;
+    for(let i=0;i<4;i++){ const a=i*Math.PI/2; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(Math.cos(a)*r*0.8, Math.sin(a)*r*0.8); ctx.stroke(); }
+    ctx.restore();
+    ctx.fillStyle="#FFD166"; ctx.beginPath(); ctx.arc(0,0,r*0.28,0,7); ctx.fill();
+    ctx.restore();
+  }
+  function drawBust(x,y,isDriver){
+    ctx.fillStyle= isDriver ? "#4ECDC4" : "#FF9BC0";
+    roundRectPath(x-9,y-2,18,16,6); ctx.fill();
+    ctx.fillStyle="#E8B98C"; ctx.beginPath(); ctx.arc(x,y-10,7,0,7); ctx.fill();
+    if(isDriver){
+      ctx.fillStyle="#2A2440";
+      ctx.beginPath(); ctx.arc(x,y-13,7.5,Math.PI,0); ctx.fill();
+      ctx.fillRect(x-7.5,y-14,15,4);
+      ctx.fillStyle="rgba(42,36,64,.7)";
+      ctx.beginPath(); ctx.arc(x,y-6,4,0,Math.PI); ctx.fill();
+    } else {
+      ctx.fillStyle="#2A2440";
+      ctx.beginPath();
+      ctx.moveTo(x-7,y-16); ctx.quadraticCurveTo(x-15,y-10,x-13,y+6);
+      ctx.quadraticCurveTo(x-9,y+2,x-7,y-8);
+      ctx.quadraticCurveTo(x,y-17,x+7,y-15);
+      ctx.quadraticCurveTo(x+8,y-19,x,y-19);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+  function drawCar(ts){
+    const carX=W*0.28, bodyW=Math.min(150,W*0.34), bodyH=H*0.24;
+    const bob = reduceMotion ? 0 : Math.sin(ts/480)*2;
+    const wheelR=bodyH*0.28;
+    const baseY=roadY-H*0.02+bob;
+    const carY=baseY-wheelR*1.3-bodyH;
+    ctx.save(); ctx.translate(carX,0);
+
+    const tlGrad=ctx.createRadialGradient(-bodyW/2+4, carY+bodyH*0.55, 0, -bodyW/2+4, carY+bodyH*0.55, 14);
+    tlGrad.addColorStop(0,"rgba(255,107,157,.55)"); tlGrad.addColorStop(1,"rgba(255,107,157,0)");
+    ctx.fillStyle=tlGrad; ctx.beginPath(); ctx.arc(-bodyW/2+4, carY+bodyH*0.55, 14,0,7); ctx.fill();
+
+    const hlAlpha=0.18*(1-sunProgress);
+    if(hlAlpha>0.01){
+      ctx.save(); ctx.globalAlpha=hlAlpha;
+      const hx=bodyW/2, hy=carY+bodyH*0.6;
+      const grad=ctx.createLinearGradient(hx,hy,hx+95,hy);
+      grad.addColorStop(0,"rgba(255,230,160,.9)"); grad.addColorStop(1,"rgba(255,230,160,0)");
+      ctx.fillStyle=grad;
+      ctx.beginPath(); ctx.moveTo(hx,hy-6); ctx.lineTo(hx+95,hy-30); ctx.lineTo(hx+95,hy+30); ctx.lineTo(hx,hy+6); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+
+    drawWheel(-bodyW*0.28, baseY, wheelR);
+    drawWheel(bodyW*0.28, baseY, wheelR);
+
+    const bg=ctx.createLinearGradient(0,carY,0,carY+bodyH);
+    bg.addColorStop(0,"#ff85ac"); bg.addColorStop(1,"#FF6B9D");
+    ctx.fillStyle=bg; roundRectPath(-bodyW/2, carY, bodyW, bodyH, 16); ctx.fill();
+
+    const winX=-bodyW*0.32, winY=carY+bodyH*0.06, winW=bodyW*0.62, winH=bodyH*0.5;
+    ctx.fillStyle="rgba(180,220,255,.22)"; roundRectPath(winX,winY,winW,winH,10); ctx.fill();
+
+    ctx.save();
+    roundRectPath(winX,winY,winW,winH,10); ctx.clip();
+    drawBust(winX+winW*0.28, winY+winH*0.62, true);
+    drawBust(winX+winW*0.72, winY+winH*0.60, false);
+    ctx.restore();
+
+    ctx.fillStyle="#FFD166"; ctx.beginPath(); ctx.arc(bodyW/2-2, carY+bodyH*0.6, 3,0,7); ctx.fill();
+    ctx.restore();
+  }
+
+  function draw(ts){
+    ctx.clearRect(0,0,W,H);
+    const p=skyProgress(), sky=skyAt(p);
+    const g=ctx.createLinearGradient(0,0,0,roadY);
+    g.addColorStop(0, rgbStr(sky.top)); g.addColorStop(1, rgbStr(sky.horizon));
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,roadY);
+
+    const starAlpha=Math.max(0, 1-p*1.3);
+    if(starAlpha>0.02){
+      ctx.save();
+      stars.forEach(s=>{
+        const tw = reduceMotion ? 0.7 : .5+Math.abs(Math.sin(ts/900+s.ph))*.5;
+        ctx.globalAlpha=starAlpha*tw;
+        ctx.fillStyle="#fff";
+        ctx.beginPath(); ctx.arc(s.x*W, s.y*H*0.6, s.r,0,7); ctx.fill();
+      });
+      ctx.restore();
+    }
+
+    drawMoon(W*0.82, H*0.2, H*0.075, Math.max(0,1-p*1.15));
+    if(sunAnimating || sunriseDone) drawSun(W*0.66, roadY, sunProgress);
+
+    drawHills(scroll*0.2);
+    drawMid(scroll*0.5);
+    drawSign();
+    drawRoad(scroll);
+    drawCar(ts);
+  }
+
+  /* ---------- the one rAF loop ---------- */
+  function frame(ts){
+    if(document.hidden || !intro.classList.contains("gone") || document.querySelector(".scene.on")){
+      setTimeout(()=>requestAnimationFrame(frame),500);
+      return;
+    }
+    update(ts);
+    draw(ts);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  return { arrive, markVisited };
+})();
 
 /* ---- shared trigger mechanism for the per-card signature fx above ----
    One card at a time gets .fx-play: on first scroll-into-view (threshold .6,
@@ -1108,6 +1509,7 @@ function closeScene(s){
   s.classList.remove("on");
   if(s.id==="scene-mixtape") Mixtape.reset();
   if(s.id==="scene-montage") Montage.stop();
+  Journey.markVisited(s.id.replace("scene-",""));
 }
 $$("[data-back]").forEach(b=>b.addEventListener("click",e=>closeScene(e.target.closest(".scene"))));
 addEventListener("keydown",e=>{
@@ -1429,6 +1831,7 @@ const Mixtape=(function(){
 /* ============ CINEMATIC MONTAGE ============ */
 const Montage=(function(){
   const frame=$("#montageFrame"), capEl=$("#montageCap"), dotsEl=$("#montageDots"), btn=$("#montageBtn"), musicBtn=$("#montageMusic"), mAudio=$("#montageAudioEl");
+  const progressEl=$("#montageProgress"), dateEl=$("#montageDate");
   const items=(CONFIG.montage&&CONFIG.montage.length)?CONFIG.montage:CONFIG.polaroids.filter(p=>p.src);
   let cur=0, playing=false, timer=null, slides=[], built=false, musicOn=false;
   function build(){
@@ -1451,6 +1854,12 @@ const Montage=(function(){
     });
     [...dotsEl.children].forEach((d,k)=>d.classList.toggle("on",k===cur));
     capEl.classList.remove("show"); capEl.textContent=items[cur].cap||""; void capEl.offsetWidth; capEl.classList.add("show");
+    // timeline: fill the progress bar and show a film-frame counter (or a date if provided)
+    if(progressEl) progressEl.style.width=Math.round(((cur+1)/slides.length)*100)+"%";
+    if(dateEl){
+      dateEl.textContent = items[cur].date || (String(cur+1).padStart(2,"0")+" / "+String(slides.length).padStart(2,"0"));
+      dateEl.classList.add("show");
+    }
   }
   function play(){ if(playing||slides.length<2)return; playing=true; btn.textContent="Pause ⏸"; timer=setInterval(()=>show(cur+1),4500); }
   function pause(){ playing=false; if(btn)btn.textContent="Play ▶"; if(timer){clearInterval(timer);timer=null;} }

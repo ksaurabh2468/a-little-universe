@@ -266,6 +266,15 @@
     background:var(--panel);border:1px solid var(--line);color:var(--ink);font-size:18px;cursor:pointer}
   #lightboxClose:hover{border-color:var(--coral)}
 
+  /* ---------- Ambient background music toggle ---------- */
+  .bg-music-toggle{
+    position:fixed;right:18px;bottom:18px;z-index:66;width:46px;height:46px;border-radius:50%;
+    background:var(--panel);border:1px solid var(--line);color:var(--ink);font-size:18px;cursor:pointer;
+    box-shadow:var(--shadow);transition:border-color .2s,transform .15s;
+  }
+  .bg-music-toggle:hover{border-color:var(--mint);transform:scale(1.06)}
+  .bg-music-toggle[aria-pressed="true"]{opacity:.5}
+
   /* ---------- Cinematic montage ---------- */
   .montage{position:relative;border-radius:20px;overflow:hidden;border:1px solid var(--line);
     background:#07061a;box-shadow:var(--shadow);aspect-ratio:16/10;max-height:64vh;margin:0 auto}
@@ -551,8 +560,12 @@
 
   /* ---------- journey strip (Night Drive) ---------- */
   .journey{position:relative;margin:8px 0 26px;border:1px solid var(--line);border-radius:20px;overflow:hidden;box-shadow:var(--shadow)}
-  #driveCv{display:block;width:100%;height:200px;background:var(--bg)}
-  @media(max-width:560px){ #driveCv{height:150px} }
+  #driveCv{display:block;width:100%;height:250px;background:var(--bg)}
+  @media(max-width:560px){ #driveCv{height:195px} }
+  #driveSkip{position:absolute;top:12px;right:12px;z-index:3;background:rgba(23,22,51,.75);border:1px solid var(--line);
+    color:var(--muted);font-size:12px;padding:7px 12px;border-radius:999px;cursor:pointer;backdrop-filter:blur(4px)}
+  #driveSkip:hover{color:var(--ink);border-color:var(--violet)}
+  .card.pre-arrival{opacity:0;transform:translateY(18px) scale(.92);pointer-events:none}
   .journey-hud{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
     padding:10px 14px;background:var(--panel);border-top:1px solid var(--line)}
   .stops{display:flex;gap:6px;flex-wrap:wrap}
@@ -598,6 +611,8 @@
 <canvas id="confetti" aria-hidden="true"></canvas>
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="lightbox" aria-hidden="true"><button id="lightboxClose" aria-label="Close">✕</button><figure><img id="lightboxImg" alt=""><figcaption id="lightboxCap"></figcaption></figure></div>
+<audio id="bgMusicEl" loop preload="none"></audio>
+<button id="bgMusicToggle" class="bg-music-toggle" hidden aria-label="Toggle background music" aria-pressed="false">🔊</button>
 
 <!-- ================= INTRO ================= -->
 <div id="intro">
@@ -650,6 +665,7 @@
 
   <div class="journey">
     <canvas id="driveCv" aria-hidden="true"></canvas>
+    <button id="driveSkip" type="button" hidden>skip the drive ⏭</button>
     <div class="journey-hud">
       <div class="stops" id="stops"></div>
       <div class="stops-count" id="stopsCount">Stops: 0/10</div>
@@ -856,6 +872,12 @@ const CONFIG = {
   spotify: "",
   montageAudio: "",     // e.g. "audio/theme-clip.mp3" — a ~30s clip that loops under the film
 
+  // Site-wide ambient background music — starts on unlock (gift-box tap / passcode), loops
+  // quietly under the whole hub, auto-pauses on the Mixtape/Cake scenes, and can be muted via
+  // the floating toggle. Needs an instrumental loop (~1-3 min) in audio/ — leave "" to skip.
+  bgMusic: "",           // e.g. "audio/ambient-loop.mp3"
+  bgMusicVolume: 0.28,
+
   // Mixtape volumes — the full song list split across multiple Spotify playlists (one
   // embed can't hold it all). Shown as a linked list beneath the tracklist. Sequenced to
   // flow: personal classics -> Punjabi/Bollywood -> indie -> a full English arc.
@@ -1058,11 +1080,36 @@ const Confetti=(function(){
   return {burst};
 })();
 
+/* ============ AMBIENT BACKGROUND MUSIC ============
+   Starts on the unlock gesture (gift-box tap / passcode) — that click is a real user
+   interaction, so browsers allow audio to start there even though they'd block it on
+   page load. Auto-ducks on scenes where she should hear something else (mixtape, cake). */
+const AmbientMusic=(function(){
+  const el=$("#bgMusicEl"), btn=$("#bgMusicToggle");
+  if(!CONFIG.bgMusic || !el || !btn) return { start(){}, duck(){}, unduck(){} };
+  el.src=CONFIG.bgMusic; el.volume=CONFIG.bgMusicVolume ?? 0.28;
+  let muted = localStorage.getItem("bday_bg_muted")==="1";
+  let started = false, ducked = false;
+  function paint(){ btn.textContent = muted ? "🔇" : "🔊"; btn.setAttribute("aria-pressed", muted?"true":"false"); }
+  paint(); btn.hidden=false;
+  function start(){ started=true; if(!muted && !ducked) el.play().catch(()=>{}); }
+  function duck(){ ducked=true; el.pause(); }
+  function unduck(){ ducked=false; if(started && !muted) el.play().catch(()=>{}); }
+  btn.addEventListener("click",()=>{
+    muted=!muted; localStorage.setItem("bday_bg_muted", muted?"1":"0"); paint();
+    if(muted) el.pause(); else if(started && !ducked) el.play().catch(()=>{});
+  });
+  return { start, duck, unduck };
+})();
+
 /* ============ INTRO → HUB ============ */
 const box=$("#giftbox"), intro=$("#intro"), hub=$("#hub");
 function cascadeEntrance(){
   if(reduceMotion) return;
-  const items=[$(".hero .eyebrow"), $(".hero h1"), $(".hero p"), ...$$(".card")];
+  /* When the intro drive will deliver cards one-by-one, keep them out of the
+     generic cascade — Journey.beginIntro() reveals each on sign arrival. */
+  const introDrive = typeof Journey!=="undefined" && Journey.introPending && Journey.introPending();
+  const items=[$(".hero .eyebrow"), $(".hero h1"), $(".hero p"), ...(introDrive? [] : $$(".card"))];
   items.forEach((el,i)=>{
     if(!el) return;
     el.animate(
@@ -1074,7 +1121,12 @@ function cascadeEntrance(){
 function enter(){
   box.classList.add("open");
   Confetti.burst(160, innerWidth/2, innerHeight*0.42);
-  setTimeout(()=>{ intro.classList.add("gone"); hub.setAttribute("aria-hidden","false"); cascadeEntrance(); },650);
+  AmbientMusic.start();
+  setTimeout(()=>{
+    intro.classList.add("gone"); hub.setAttribute("aria-hidden","false");
+    if(typeof Journey!=="undefined" && Journey.beginIntro) Journey.beginIntro();
+    cascadeEntrance();
+  },650);
 }
 box.addEventListener("click",()=>{ isAdmin() ? enter() : openGate(); });
 
@@ -1100,8 +1152,8 @@ const Journey=(function(){
   if(!cv) return { arrive:(id)=>openScene(id), markVisited:()=>{} };
   const ctx=cv.getContext("2d");
   const skyOverlayEl=$("#skyOverlay");
-  const stopsEl=$("#stops"), countEl=$("#stopsCount");
-  let W=0,H=0,roadY=0,roadH=0;
+  const stopsEl=$("#stops"), countEl=$("#stopsCount"), skipBtn=$("#driveSkip");
+  let W=0,H=0,horizonY=0;
 
   /* ---------- persisted stop state ---------- */
   let visited=[];
@@ -1170,7 +1222,7 @@ const Journey=(function(){
   }
 
   /* ---------- DPR-aware sizing ---------- */
-  function computeLayout(){ roadH=H*0.30; roadY=H-roadH; }
+  function computeLayout(){ horizonY=H*0.42; }
   function resize(){
     const rect=cv.getBoundingClientRect();
     const dpr=Math.min(2, window.devicePixelRatio||1);
@@ -1182,46 +1234,98 @@ const Journey=(function(){
   resize();
   let resizeT; addEventListener("resize",()=>{ clearTimeout(resizeT); resizeT=setTimeout(resize,150); });
 
-  /* ---------- scene state ---------- */
-  let scroll=0, speed=1, speedTarget=1, wheelRot=0, lastTs=null;
-  let sign={active:false,x:0,emoji:""};
-  let arrival=null; // {id, emoji, t0, dur}
-  const stars=Array.from({length:14},()=>({x:Math.random(), y:Math.random()*0.5, r:Math.random()*1.2+.4, ph:Math.random()*Math.PI*2}));
+  /* ---------- first-person scene state ----------
+     Pseudo-3D projection (behind-the-windshield view). For a screen row y
+     below the horizon:
+       pers   = (y - horizonY) / (H - horizonY)    // 0 = far, 1 = at the bumper
+       worldZ = camZ + DEPTH / pers
+     Objects use the inverse mapping, so road rows, lane dashes, roadside
+     poles and destination signs all share one consistent perspective. */
+  const DEPTH=16;
+  let camZ=0, speed=1, speedTarget=1, lastTs=null, steer=0, bob=0;
+  let arrival=null;              // {id, emoji, z, t0}
+  let introSeq=null;             // {i, sign:{emoji,z}} — staged card deliveries
+  let introDone = localStorage.getItem("bday_drive_intro")==="1";
+  const stars=Array.from({length:16},()=>({x:Math.random(), y:Math.random(), r:Math.random()*1.2+.4, ph:Math.random()*Math.PI*2}));
+  const SPAN=260, N_SIDE=14;
+  const roadside=Array.from({length:N_SIDE},(_,i)=>({z:(i+1)*SPAN, side:i%2? 1:-1, tree:i%3===0}));
 
-  function easeOutCubic(t){ return 1-Math.pow(1-t,3); }
+  function curveAt(z){ return Math.sin(z*0.0011)*0.85 + Math.sin(z*0.00047)*0.45; }
+  function persOf(z){ const rel=z-camZ; return rel<=DEPTH ? 1 : DEPTH/rel; }
+  function rowOf(pers){ return horizonY + pers*(H-horizonY); }
+  function roadCenter(pers, zWorld){
+    return W/2 + curveAt(zWorld)*Math.pow(1-pers,1.6)*W*0.5 - steer*(1-pers)*30;
+  }
+  function roadHalf(pers){ return pers*W*0.38 + 1.5; }
 
+  /* ---------- staged intro: each card is delivered as its sign is reached ---------- */
+  function introPending(){ return !introDone && !reduceMotion; }
+  function cardEls(){ return $$("#grid .card"); }
+  function revealCard(el, animate){
+    if(!el || !el.classList.contains("pre-arrival")) return;
+    el.classList.remove("pre-arrival");
+    if(animate && !reduceMotion)
+      el.animate([{opacity:0,transform:"translateY(18px) scale(.9)"},{opacity:1,transform:"none"}],
+                 {duration:420,easing:"cubic-bezier(.2,.9,.3,1.25)"});
+  }
+  function beginIntro(){
+    if(!introPending()) return;
+    cardEls().forEach(el=>el.classList.add("pre-arrival"));
+    introSeq={ i:0, sign:{ emoji:CARDS[0].ico, z: camZ + DEPTH/0.05 } };
+    speedTarget=2.4;
+    if(skipBtn) skipBtn.hidden=false;
+  }
+  function finishIntro(revealRest){
+    if(revealRest) cardEls().forEach(el=>revealCard(el,false));
+    introSeq=null; introDone=true; speedTarget=1;
+    try{ localStorage.setItem("bday_drive_intro","1"); }catch(e){}
+    if(skipBtn) skipBtn.hidden=true;
+  }
+  if(skipBtn) skipBtn.addEventListener("click",()=>finishIntro(true));
+  cv.addEventListener("click",()=>{ if(introSeq) finishIntro(true); });
+
+  /* ---------- tap-a-card arrival: destination sign grows from the horizon ---------- */
   function arrive(id, emoji){
+    if(introSeq) finishIntro(true);
     if(reduceMotion){ openScene(id); return; }
     if(arrival && arrival.id===id) return;
-    arrival={ id, emoji, t0:null, dur:900 };
+    arrival={ id, emoji, z: camZ + DEPTH/0.045, t0:performance.now() };
+    speedTarget=3.2;
   }
 
   function update(ts){
     if(lastTs==null) lastTs=ts;
     const dt=Math.min(50, ts-lastTs); lastTs=ts;
 
-    if(arrival){
-      if(arrival.t0==null) arrival.t0=ts;
-      const p=Math.min(1,(ts-arrival.t0)/arrival.dur);
-      const carX=W*0.28, startX=W+60, stopX=carX+52;
-      sign.active=true; sign.emoji=arrival.emoji;
-      sign.x = startX + (stopX-startX)*easeOutCubic(p);
-      speedTarget = p<0.6 ? 3 : Math.max(0, 3*(1-(p-0.6)/0.4));
-      if(p>=1){
-        const id=arrival.id;
-        arrival=null; sign.active=false; speedTarget=0;
-        openScene(id);
+    if(!reduceMotion){
+      speed += (speedTarget-speed)*0.075;
+      camZ += speed*230*(dt/1000);
+      const targetSteer=curveAt(camZ+DEPTH/0.5);
+      steer += (targetSteer-steer)*0.06;
+      bob = Math.sin(ts/270)*Math.min(1.6, speed*0.8);
+    } else { speed=0; bob=0; }
+
+    roadside.forEach(o=>{ while(o.z-camZ < 2) o.z += N_SIDE*SPAN; });
+
+    if(introSeq){
+      const p=persOf(introSeq.sign.z);
+      if(p>=0.9){
+        revealCard(cardEls()[introSeq.i], true);
+        introSeq.i++;
+        if(introSeq.i>=CARDS.length){ finishIntro(false); }
+        else introSeq.sign={ emoji:CARDS[introSeq.i].ico, z: camZ + DEPTH/0.05 };
       }
-    } else {
-      speedTarget=1;
     }
 
-    if(!reduceMotion){
-      speed += (speedTarget-speed)*0.08;
-      scroll += speed*40*(dt/1000);
-      wheelRot += speed*0.12*(dt/16.7);
-    } else {
-      speed=0;
+    if(arrival){
+      const p=persOf(arrival.z);
+      if(p>0.45) speedTarget=Math.max(0.15, 3.2*(1-(p-0.45)/0.45));
+      if(p>=0.88 || ts-arrival.t0>2600){
+        const id=arrival.id; arrival=null; speedTarget=1;
+        openScene(id);
+      }
+    } else if(!introSeq){
+      speedTarget=1;
     }
 
     if(sunAnimating){
@@ -1503,12 +1607,14 @@ function openScene(id){
   if(id==="scratch") Scratch.reset();
   if(id==="wheel") Wheel.draw();
   if(id==="montage") Montage.reset();
+  if(id==="mixtape" || id==="cake") AmbientMusic.duck();
 }
 function closeScene(s){
   if(!s) return;
   s.classList.remove("on");
   if(s.id==="scene-mixtape") Mixtape.reset();
   if(s.id==="scene-montage") Montage.stop();
+  if(s.id==="scene-mixtape" || s.id==="scene-cake") AmbientMusic.unduck();
   Journey.markVisited(s.id.replace("scene-",""));
 }
 $$("[data-back]").forEach(b=>b.addEventListener("click",e=>closeScene(e.target.closest(".scene"))));

@@ -442,11 +442,13 @@
   #toast.show{transform:translateX(-50%) translateY(0);visibility:visible}
 
   /* ---------- place banner (story-mode stop reveals) ---------- */
-  #placeBanner{position:fixed;left:50%;top:16px;transform:translate(-50%,-140%);z-index:66;visibility:hidden;
-    background:var(--panel);border:1px solid var(--gold);color:var(--ink);padding:10px 20px;border-radius:999px;
-    box-shadow:var(--shadow);transition:transform .5s cubic-bezier(.2,.8,.2,1),visibility .5s;font-weight:700;
-    font-size:14px;white-space:nowrap;max-width:88vw;text-align:center;pointer-events:none}
+  #placeBanner{position:fixed;left:50%;top:16px;transform:translate(-50%,-160%);z-index:66;visibility:hidden;
+    background:var(--panel);border:1px solid var(--gold);color:var(--ink);padding:11px 22px;border-radius:18px;
+    box-shadow:var(--shadow);transition:transform .5s cubic-bezier(.2,.8,.2,1),visibility .5s;
+    max-width:min(360px,90vw);text-align:center;pointer-events:none;line-height:1.35}
   #placeBanner.show{transform:translate(-50%,0);visibility:visible}
+  #placeBanner b{display:block;font-weight:700;font-size:14px}
+  #placeBanner .pb-vibe{display:block;font-weight:400;font-size:12px;color:var(--muted);font-style:italic;margin-top:2px}
 
   /* ---------- gift box: idle rattle + sparkle ---------- */
   .giftbox-wrap{position:relative}
@@ -1065,25 +1067,25 @@ const CONFIG = {
    `fx` is the inner markup for that card's decoration layer, injected as
    <span class="fx fx-<id>"> inside the card — see BUILD HUB CARDS below. */
 const CARDS = [
-  { id:"wrapped", ico:"🎁", title:"Your Year, Wrapped", desc:"A little highlight reel of you.", edge:"var(--coral)", glow:"rgba(255,107,157,.25)", place:"Bandra",
+  { id:"wrapped", ico:"🎁", title:"Your Year, Wrapped", desc:"A little highlight reel of you.", edge:"var(--coral)", glow:"rgba(255,107,157,.25)", place:"Bandra", vibe:"quiet lanes, fairy-lit cafés, the night just starting",
     fx:'<i class="fx-shine"></i>' },
-  { id:"mixtape", ico:"📼", title:"Your Mixtape",         desc:"Press play.",                     edge:"var(--gold)",  glow:"rgba(255,209,102,.22)", place:"Bandra–Worli Sea Link",
+  { id:"mixtape", ico:"📼", title:"Your Mixtape",         desc:"Press play.",                     edge:"var(--gold)",  glow:"rgba(255,209,102,.22)", place:"Bandra–Worli Sea Link", vibe:"cables lit up, the black sea on both sides",
     fx:'<i class="fx-eq" style="left:14px;background:var(--gold);animation-delay:0s"></i><i class="fx-eq" style="left:20px;background:var(--coral);animation-delay:.1s"></i><i class="fx-eq" style="left:26px;background:var(--mint);animation-delay:.2s"></i><i class="fx-eq" style="left:32px;background:var(--violet);animation-delay:.3s"></i>' },
-  { id:"wall",    ico:"📸", title:"Polaroid Wall",       desc:"Your photos live here.",          edge:"var(--coral)", glow:"rgba(255,107,157,.2)", place:"Bandstand",
+  { id:"wall",    ico:"📸", title:"Polaroid Wall",       desc:"Your photos live here.",          edge:"var(--coral)", glow:"rgba(255,107,157,.2)", place:"Bandstand", vibe:"waves on the rocks, the promenade nearly empty",
     fx:'<i class="fx-flash"></i>' },
-  { id:"montage", ico:"🎞️", title:"A Little Film",        desc:"Press play on the memories.",     edge:"var(--mint)",  glow:"rgba(78,205,196,.22)", place:"Marine Drive",
+  { id:"montage", ico:"🎞️", title:"A Little Film",        desc:"Press play on the memories.",     edge:"var(--mint)",  glow:"rgba(78,205,196,.22)", place:"Marine Drive", vibe:"the Queen's Necklace curving gold along the bay",
     fx:'<i class="fx-filmsweep"></i>' },
-  { id:"machine", ico:"🎰", title:"Compliment Machine",  desc:"Pull the lever for a boost.",     edge:"var(--violet)",glow:"rgba(155,107,255,.25)", place:"Gateway of India",
+  { id:"machine", ico:"🎰", title:"Compliment Machine",  desc:"Pull the lever for a boost.",     edge:"var(--violet)",glow:"rgba(155,107,255,.25)", place:"Gateway of India", vibe:"the arch floodlit, the harbour breathing behind it",
     fx:'<span class="reel-strip">'+["🎰","🍒","⭐","💖","7️⃣","🎰"].map(e=>"<i>"+e+"</i>").join("")+'</span>' },
-  { id:"scratch", ico:"🪙", title:"Scratch & Reveal",    desc:"Scratch off the foil.",           edge:"var(--mint)",  glow:"rgba(78,205,196,.22)", place:"Colaba Causeway",
+  { id:"scratch", ico:"🪙", title:"Scratch & Reveal",    desc:"Scratch off the foil.",           edge:"var(--mint)",  glow:"rgba(78,205,196,.22)", place:"Colaba Causeway", vibe:"shuttered stalls, string lights, late-night chai",
     fx:'<i class="fx-sheen"></i><i class="fx-glint">✦</i>' },
-  { id:"game",    ico:"🧁", title:"Cupcake Catch",      desc:"Play. Win. Unlock a secret.",    edge:"var(--mint)",  glow:"rgba(78,205,196,.22)", place:"Juhu Beach",
+  { id:"game",    ico:"🧁", title:"Cupcake Catch",      desc:"Play. Win. Unlock a secret.",    edge:"var(--mint)",  glow:"rgba(78,205,196,.22)", place:"Juhu Beach", vibe:"wet sand, far-off fair lights, the tide coming in",
     fx:'<i class="fx-drop" style="left:16%;animation-delay:0s">🧁</i><i class="fx-drop" style="left:48%;animation-delay:.15s">🧁</i><i class="fx-drop" style="left:78%;animation-delay:.3s">🧁</i><i class="fx-basket2"></i>' },
-  { id:"wheel",   ico:"🎡", title:"Wheel of Plans",       desc:"Spin for how we celebrate.",      edge:"var(--violet)",glow:"rgba(155,107,255,.25)", place:"Girgaon Chowpatty",
+  { id:"wheel",   ico:"🎡", title:"Wheel of Plans",       desc:"Spin for how we celebrate.",      edge:"var(--violet)",glow:"rgba(155,107,255,.25)", place:"Girgaon Chowpatty", vibe:"ferris-wheel glow, the last kulfi cart",
     fx:"" },
-  { id:"cake",    ico:"🎂", title:"Make a Wish",         desc:"Blow out the candles.",           edge:"var(--gold)",  glow:"rgba(255,209,102,.25)", place:"Worli Sea Face",
+  { id:"cake",    ico:"🎂", title:"Make a Wish",         desc:"Blow out the candles.",           edge:"var(--gold)",  glow:"rgba(255,209,102,.25)", place:"Worli Sea Face", vibe:"midnight wind off the sea, the skyline as our candles",
     fx:'<i class="fx-glow"></i><i class="fx-smoke"></i>' },
-  { id:"finale",  ico:"🎆", title:"One Last Thing",       desc:"Open this one last.",             edge:"var(--gold)",  glow:"rgba(255,209,102,.22)", place:"Bandra (home)",
+  { id:"finale",  ico:"🎆", title:"One Last Thing",       desc:"Open this one last.",             edge:"var(--gold)",  glow:"rgba(255,209,102,.22)", place:"back to Thane", vibe:"home again, the sky going soft and pink",
     fx:'<i class="fx-borderglow"></i><i class="fx-spark" style="left:20%;--dx:-10px;animation-delay:0s;background:var(--gold)"></i><i class="fx-spark" style="left:35%;--dx:8px;animation-delay:.12s;background:var(--coral)"></i><i class="fx-spark" style="left:50%;--dx:-6px;animation-delay:.24s;background:var(--gold)"></i><i class="fx-spark" style="left:65%;--dx:10px;animation-delay:.36s;background:var(--coral)"></i><i class="fx-spark" style="left:80%;--dx:-8px;animation-delay:.48s;background:var(--gold)"></i>' }
 ];
 
@@ -1218,15 +1220,27 @@ const AmbientMusic=(function(){
   if(!CONFIG.bgMusic || !el || !btn) return { start(){}, duck(){}, unduck(){} };
   el.src=CONFIG.bgMusic; el.volume=CONFIG.bgMusicVolume ?? 0.28;
   let muted = localStorage.getItem("bday_bg_muted")==="1";
-  let started = false, ducked = false;
+  let started = false, ducked = false, confirmed = false;
+  el.addEventListener("playing",()=>{ confirmed=true; });
   function paint(){ btn.textContent = muted ? "🔇" : "🔊"; btn.setAttribute("aria-pressed", muted?"true":"false"); }
   paint(); btn.hidden=false;
-  function start(){ started=true; if(!muted && !ducked) el.play().catch(()=>{}); }
+  function attempt(){ el.play().catch(()=>{}); }
+  // Safety net: browsers occasionally decline the unlock-click autoplay for subtle timing
+  // reasons. If actual playback didn't confirm, retry on the very next real tap anywhere
+  // in the hub (e.g. opening a card) — still a genuine user gesture, so it's allowed.
+  function armRetry(){
+    const retry=()=>{
+      if(!confirmed && started && !muted && !ducked) attempt();
+      document.removeEventListener("click", retry, true);
+    };
+    document.addEventListener("click", retry, true);
+  }
+  function start(){ started=true; if(!muted && !ducked){ attempt(); armRetry(); } }
   function duck(){ ducked=true; el.pause(); }
-  function unduck(){ ducked=false; if(started && !muted) el.play().catch(()=>{}); }
+  function unduck(){ ducked=false; if(started && !muted) attempt(); }
   btn.addEventListener("click",()=>{
     muted=!muted; localStorage.setItem("bday_bg_muted", muted?"1":"0"); paint();
-    if(muted) el.pause(); else if(started && !ducked) el.play().catch(()=>{});
+    if(muted) el.pause(); else if(started && !ducked) attempt();
   });
   return { start, duck, unduck };
 })();
@@ -1414,12 +1428,12 @@ const Journey=(function(){
 
   /* ---------- place banner: "📍 <place>" — slides in top-center for ~2.6s on each drip reveal ---------- */
   let placeBannerT=null;
-  function placeBanner(place){
-    if(!placeBannerEl){ toast("📍 "+place, 2600); return; }
-    placeBannerEl.textContent="📍 "+place;
+  function placeBanner(place, vibe){
+    if(!placeBannerEl){ toast("📍 "+place+(vibe?" — "+vibe:""), 3200); return; }
+    placeBannerEl.innerHTML="<b>📍 "+place+"</b>"+(vibe?'<span class="pb-vibe">'+vibe+'</span>':"");
     placeBannerEl.classList.add("show");
     clearTimeout(placeBannerT);
-    placeBannerT=setTimeout(()=>placeBannerEl.classList.remove("show"), 2600);
+    placeBannerT=setTimeout(()=>placeBannerEl.classList.remove("show"), 3600);
   }
 
   /* ---------- opening cinematic: "both of us get in the car" ----------
@@ -1428,7 +1442,7 @@ const Journey=(function(){
      (see drawOpeningScene()/draw() below) — no second canvas, no second rAF
      loop, just a branch inside the one Journey already runs. */
   const OPENING_BEATS=[
-    { text:"Mumbai.",                 from:150,  to:1000 },
+    { text:"Thane.",                  from:150,  to:1000 },
     { text:"tonight.",                from:1150, to:2000 },
     { text:"the birthday drive 🚗💨", from:2100, to:2950 },
     { text:"buckle up, Momo 💛",      from:2950, to:3800 }
@@ -1605,7 +1619,7 @@ const Journey=(function(){
         speedTarget = p>0.4 ? Math.max(0.4, 3.0*(1-(p-0.4)/0.6)) : 3.0;
         if(drip.apT>=DRIP_APPROACH || p>=1){
           revealCard(cardEls()[drip.n], true);
-          placeBanner(CARDS[drip.n].place);
+          placeBanner(CARDS[drip.n].place, CARDS[drip.n].vibe);
           drip.n++;
           introSeq=null;
           if(drip.n>=CARDS.length){ finishIntro(false); }

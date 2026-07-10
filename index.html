@@ -1318,7 +1318,14 @@ const Journey=(function(){
     if(skipBtn) skipBtn.hidden=true;
   }
   if(skipBtn) skipBtn.addEventListener("click",()=>finishIntro(true));
-  cv.addEventListener("click",()=>{ if(introSeq) finishIntro(true); });
+
+  /* ---------- replay: reset the night after the sunrise (stops stay revisitable anyway) ---------- */
+  if(againBtn) againBtn.addEventListener("click",()=>{
+    visited=[]; sunProgress=0; sunriseDone=false; sunAnimating=false; sunStartTs=null;
+    try{ localStorage.removeItem("bday_stops"); localStorage.removeItem("bday_sunrise_done"); }catch(e){}
+    refreshChips(); applyPageOverlay();
+    toast("Windows down, tank full — the night is young again 🌙",4200);
+  });
 
   /* ---------- tap-a-card arrival: destination sign grows from the horizon ---------- */
   function arrive(id, emoji){
@@ -1423,25 +1430,27 @@ const Journey=(function(){
   function drawRoadRows(){
     /* per-scanline road with perspective, curvature and headlight falloff */
     const rows=Math.round(H-horizonY);
-    for(let i=1;i<=rows;i++){
+    /* full-page canvas: step 2px rows on tall viewports to halve fill count */
+    const step=rows>340?2:1, fh=step+0.6;
+    for(let i=1;i<=rows;i+=step){
       const y=horizonY+i, pers=i/rows;
       const zWorld=camZ + DEPTH/Math.max(pers,0.001);
       const cx=roadCenter(pers,zWorld), half=roadHalf(pers);
       const light=Math.max(0, Math.min(1,(pers-0.04)*1.5))*(1-sunProgress*0.55) + sunProgress*0.55;
-      /* 1.6px-tall rows overlap slightly so fractional DPRs can't leave hairline gaps */
+      /* slightly-overlapping rows so fractional DPRs can't leave hairline gaps */
       ctx.fillStyle=rgbStr(lerpRGB([8,7,20],[26,22,52],light*0.8));
-      ctx.fillRect(0,y,W,1.6);
+      ctx.fillRect(0,y,W,fh);
       ctx.fillStyle=rgbStr(lerpRGB([13,12,32],[58,54,105],light));
-      ctx.fillRect(cx-half,y,half*2,1.6);
+      ctx.fillRect(cx-half,y,half*2,fh);
       if(Math.floor(zWorld/9)%2===0){
-        const ew=Math.max(1,pers*4);
+        const ew=Math.max(1,pers*4*SCL);
         ctx.fillStyle="rgba(245,243,255,"+(0.12+0.38*light).toFixed(3)+")";
-        ctx.fillRect(cx-half,y,ew,1.6); ctx.fillRect(cx+half-ew,y,ew,1.6);
+        ctx.fillRect(cx-half,y,ew,fh); ctx.fillRect(cx+half-ew,y,ew,fh);
       }
       if(Math.floor(zWorld/12)%2===0){
-        const dw=Math.max(1,pers*7);
+        const dw=Math.max(1,pers*7*SCL);
         ctx.fillStyle="rgba(255,209,102,"+(0.20+0.55*light).toFixed(3)+")";
-        ctx.fillRect(cx-dw/2,y,dw,1.6);
+        ctx.fillRect(cx-dw/2,y,dw,fh);
       }
     }
   }
@@ -1449,7 +1458,7 @@ const Journey=(function(){
   function drawPole(o){
     const pers=persOf(o.z); if(pers>=1||pers<0.03) return;
     const y=rowOf(pers), cx=roadCenter(pers,o.z), half=roadHalf(pers);
-    const x=cx + o.side*(half + 26*pers + 6), s=pers;
+    const x=cx + o.side*(half + 26*pers*SCL + 6), s=pers*SCL;
     const light=Math.max(0.15, Math.min(1,(pers-0.04)*1.4));
     if(o.tree){
       const th=90*s, tw=54*s;
@@ -1467,7 +1476,7 @@ const Journey=(function(){
     /* destination board on the left shoulder, growing as it approaches */
     const pers=persOf(z); if(pers>=1||pers<0.03) return;
     const y=rowOf(pers), cx=roadCenter(pers,z), half=roadHalf(pers);
-    const x=cx + (half + 34*pers + 8), s=pers;
+    const x=cx + (half + 34*pers*SCL + 8), s=pers*SCL;
     const postH=95*s, bw=86*s, bh=64*s;
     ctx.fillStyle="#241f4d"; ctx.fillRect(x-2.5*s, y-postH, 5*s, postH);
     ctx.fillStyle="#1b1840"; ctx.strokeStyle="rgba(255,209,102,.8)"; ctx.lineWidth=Math.max(1,2*s);
@@ -1493,13 +1502,15 @@ const Journey=(function(){
     }
 
     /* rear-view mirror: the two of us as silhouettes (driver right seat, India) */
-    const mw=Math.min(118,W*0.24), mh=30, mx=W/2-mw/2, my=8+bob*0.3;
-    ctx.fillStyle="#0e0c26"; roundRectPath(mx-3,my-3,mw+6,mh+6,9); ctx.fill();
-    ctx.fillStyle="#232047"; roundRectPath(mx,my,mw,mh,7); ctx.fill();
+    const msc=Math.max(1,SCL*0.9);
+    const mw=Math.min(118*msc,W*0.22), mh=30*msc, mx=W/2-mw/2, my=10+bob*0.3;
+    ctx.fillStyle="#0e0c26"; roundRectPath(mx-3*msc,my-3*msc,mw+6*msc,mh+6*msc,9*msc); ctx.fill();
+    ctx.fillStyle="#232047"; roundRectPath(mx,my,mw,mh,7*msc); ctx.fill();
     ctx.save();
-    roundRectPath(mx,my,mw,mh,7); ctx.clip();
+    roundRectPath(mx,my,mw,mh,7*msc); ctx.clip();
+    ctx.translate(mx,my); ctx.scale(msc,msc);
     ctx.fillStyle="#0d0b22";
-    const dyb=my+mh, dx=mx+mw*0.68, px2=mx+mw*0.30;
+    const mw0=mw/msc, mh0=mh/msc, dyb=mh0, dx=mw0*0.68, px2=mw0*0.30;
     ctx.beginPath(); ctx.arc(dx,dyb-14,8,0,7); ctx.fill();
     ctx.fillRect(dx-11,dyb-8,22,8);
     ctx.beginPath(); ctx.arc(dx,dyb-11,8.5,0.15*Math.PI,0.85*Math.PI); ctx.fill();
@@ -1521,21 +1532,21 @@ const Journey=(function(){
     ctx.fillStyle=ap; ctx.fillRect(W-apw,0,apw,H);
 
     /* dashboard — clearly darker than the world outside */
-    const dashTop=H*0.84+bob;
+    const dashTop=H*0.88+bob;
     const dg=ctx.createLinearGradient(0,dashTop,0,H);
     dg.addColorStop(0,"#0b0920"); dg.addColorStop(1,"#050410");
     ctx.fillStyle=dg;
     ctx.beginPath();
-    ctx.moveTo(0,H); ctx.lineTo(0,dashTop+10);
-    ctx.quadraticCurveTo(W/2,dashTop-12,W,dashTop+10);
+    ctx.moveTo(0,H); ctx.lineTo(0,dashTop+10*SCL);
+    ctx.quadraticCurveTo(W/2,dashTop-12*SCL,W,dashTop+10*SCL);
     ctx.lineTo(W,H); ctx.closePath(); ctx.fill();
     ctx.strokeStyle="rgba(155,107,255,.45)"; ctx.lineWidth=1.5;
-    ctx.beginPath(); ctx.moveTo(0,dashTop+10); ctx.quadraticCurveTo(W/2,dashTop-12,W,dashTop+10); ctx.stroke();
-    ctx.fillStyle="rgba(78,205,196,.8)"; ctx.beginPath(); ctx.arc(W*0.30,dashTop+16,2,0,7); ctx.fill();
-    ctx.fillStyle="rgba(255,107,157,.8)"; ctx.beginPath(); ctx.arc(W*0.35,dashTop+18,2,0,7); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(0,dashTop+10*SCL); ctx.quadraticCurveTo(W/2,dashTop-12*SCL,W,dashTop+10*SCL); ctx.stroke();
+    ctx.fillStyle="rgba(78,205,196,.8)"; ctx.beginPath(); ctx.arc(W*0.30,dashTop+16*SCL,2*SCL,0,7); ctx.fill();
+    ctx.fillStyle="rgba(255,107,157,.8)"; ctx.beginPath(); ctx.arc(W*0.35,dashTop+18*SCL,2*SCL,0,7); ctx.fill();
 
     /* steering wheel, right-hand drive, turning with the road */
-    const wx=W*0.72, wy=H*1.06+bob*1.2, wr=H*0.34;
+    const wx=W*0.72, wy=H*1.10+bob*1.2, wr=H*0.30;
     ctx.save(); ctx.translate(wx,wy); ctx.rotate(-steer*0.55);
     ctx.strokeStyle="#332d63"; ctx.lineWidth=Math.max(9,H*0.05);
     ctx.beginPath(); ctx.arc(0,0,wr,0,7); ctx.stroke();

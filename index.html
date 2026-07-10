@@ -1479,14 +1479,34 @@ function cascadeEntrance(){
   /* When the intro drive will deliver cards one-by-one, keep them out of the
      generic cascade — Journey.beginIntro() reveals each on sign arrival. */
   const introDrive = typeof Journey!=="undefined" && Journey.introPending && Journey.introPending();
-  const items=[$(".hero .eyebrow"), $(".hero h1"), $(".hero p"), ...(introDrive? [] : $$(".card"))];
-  items.forEach((el,i)=>{
+  const anims=[];
+  const slideIn=(el,delay,duration)=>anims.push(el.animate(
+    [{opacity:0,transform:"translateY(24px) scale(.97)"},{opacity:1,transform:"translateY(0) scale(1)"}],
+    {duration, delay, easing:"cubic-bezier(.2,.9,.3,1.2)", fill:"backwards"}
+  ));
+  // the road scene settles in on its own, fast — everything else takes turns on top of it
+  const bgCv=$("#driveCv");
+  if(bgCv) anims.push(bgCv.animate([{opacity:0},{opacity:1}],{duration:900,easing:"ease-out",fill:"backwards"}));
+
+  const CHROME_STEP=550; // ~half a second between each piece of chrome so it can be read as it lands
+  let t=CHROME_STEP;
+  [$(".topline"), $(".hero .eyebrow"), $(".hero h1"), $(".hero p"), $(".journey-hud")].forEach(el=>{
     if(!el) return;
-    el.animate(
-      [{opacity:0,transform:"translateY(24px) scale(.97)"},{opacity:1,transform:"translateY(0) scale(1)"}],
-      {duration:500, delay:i*60, easing:"cubic-bezier(.2,.9,.3,1.2)", fill:"backwards"}
-    );
+    slideIn(el,t,600); t+=CHROME_STEP;
   });
+  if(!introDrive){
+    const CARD_STEP=90;
+    $$(".card").forEach(el=>{ slideIn(el,t,500); t+=CARD_STEP; });
+  }
+  const footnote=$(".footnote");
+  if(footnote) slideIn(footnote,t,600);
+
+  // an impatient tap/click jumps every pending piece straight to its final state
+  // instead of making her wait through the whole staggered reveal
+  if(anims.length){
+    const skip=()=>{ anims.forEach(a=>{ try{a.finish();}catch(e){} }); removeEventListener("pointerdown",skip,true); };
+    addEventListener("pointerdown",skip,true);
+  }
 }
 function enter(){
   box.classList.add("open");
@@ -1791,6 +1811,13 @@ const Journey=(function(){
     if(openingOverlayEl) openingOverlayEl.classList.remove("on");
     if(openingTextEl){ openingTextEl.classList.remove("show"); openingTextEl.textContent=""; }
     if(openingSkipBtn) openingSkipBtn.hidden=true;
+    /* This is the moment the drive actually starts appearing on screen — without
+       this, removing .cine lets the plain CSS transition (#hub .hero,.journey,
+       #grid,.footnote{transition:opacity .45s ease}) fade everything in as one
+       simultaneous block. Re-running the staggered reveal here overrides that
+       with the same one-by-one cascade used elsewhere, so header/title/subtitle/
+       controls land in turn instead of all landing on the viewer at once. */
+    cascadeEntrance();
     startDrip();
   }
   if(openingSkipBtn) openingSkipBtn.addEventListener("click", finishOpeningCine);

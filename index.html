@@ -145,6 +145,17 @@
     background:radial-gradient(circle at 32% 30%, #ffd7e6, var(--coral) 55%, #b64c78);
     box-shadow:0 0 0 4px rgba(255,107,157,.18), 0 8px 22px rgba(0,0,0,.4)}
   .brand b{font-family:var(--display);font-weight:800;letter-spacing:.02em}
+  .avatar-badge-wrap{position:relative;width:34px;height:34px;display:inline-flex}
+  .avatar-badge{width:34px;height:34px;border-radius:50%;object-fit:cover;
+    border:2px solid var(--gold);box-shadow:0 4px 14px rgba(0,0,0,.4);
+    animation:badgebreathe 4.5s ease-in-out infinite}
+  @keyframes badgebreathe{
+    0%,100%{box-shadow:0 4px 14px rgba(0,0,0,.4), 0 0 0 0 rgba(255,209,102,.35)}
+    50%{box-shadow:0 4px 14px rgba(0,0,0,.4), 0 0 0 5px rgba(255,209,102,0)}
+  }
+  .avatar-badge-wrap .moon-orbit{inset:-6px;animation:orbit 7s linear infinite}
+  .avatar-badge-wrap .moon{width:4px;height:4px;margin-left:-2px;background:var(--gold);
+    box-shadow:0 0 6px 1px rgba(255,209,102,.8)}
   .countdown{
     display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);
     border-radius:999px;padding:8px 14px;font-size:13px;color:var(--muted)
@@ -326,6 +337,23 @@
 
   /* ---------- Finale ---------- */
   .finale{text-align:center;display:grid;gap:18px;place-items:center;padding:20px}
+  .finale-portrait-wrap{position:relative;width:150px;height:150px;
+    animation:portraitarrive .9s cubic-bezier(.2,.8,.2,1.1) both}
+  @keyframes portraitarrive{from{opacity:0;transform:scale(.8) translateY(14px)}to{opacity:1;transform:none}}
+  .finale-portrait-wrap::before{content:"";position:absolute;inset:-22px;border-radius:50%;
+    background:radial-gradient(circle, rgba(255,209,102,.35), transparent 70%);
+    animation:glowpulse 3.2s ease-in-out infinite}
+  .finale-portrait{position:relative;z-index:1;width:140px;height:140px;border-radius:50%;object-fit:cover;
+    border:3px solid var(--gold);box-shadow:0 12px 34px rgba(0,0,0,.5), 0 0 0 8px rgba(255,209,102,.12);
+    animation:portraitbreathe 5s ease-in-out infinite}
+  @keyframes portraitbreathe{50%{transform:scale(1.035)}}
+  .finale-portrait-wrap .ring{position:absolute;inset:0;animation:orbit linear infinite}
+  .finale-portrait-wrap .ring i{position:absolute;top:-3px;left:50%;width:6px;height:6px;margin-left:-3px;
+    border-radius:50%;background:var(--gold);box-shadow:0 0 8px 1px rgba(255,209,102,.8)}
+  .finale-portrait-wrap .ring.r1{animation-duration:9s}
+  .finale-portrait-wrap .ring.r2{inset:-14px;animation-duration:13s;animation-direction:reverse}
+  .finale-portrait-wrap .ring.r2 i{width:4px;height:4px;margin-left:-2px;background:var(--coral);
+    box-shadow:0 0 7px 1px rgba(255,107,157,.75)}
   .finale h2{font-size:clamp(30px,7vw,56px);font-family:var(--display)}
   .finale h2 span{background:linear-gradient(100deg,var(--gold),var(--coral));-webkit-background-clip:text;background-clip:text;color:transparent}
   .finale p{color:var(--muted);max-width:52ch;line-height:1.6;margin:0}
@@ -561,12 +589,15 @@
   /* ---------- Night Drive: full-page living background + slim HUD ---------- */
   #driveCv{position:fixed;inset:0;z-index:1;width:100%;height:100%;display:block;pointer-events:none;background:var(--bg)}
   .journey{position:relative;margin:8px 0 26px;border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:var(--shadow)}
-  #driveSkip,#driveAgain{background:rgba(23,22,51,.8);border:1px solid var(--line);white-space:nowrap;
-    color:var(--muted);font-size:12px;padding:7px 12px;border-radius:999px;cursor:pointer}
-  #driveSkip:hover{color:var(--ink);border-color:var(--violet)}
+  .hud-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+  #driveSkip,#driveAgain,#stopsToggle,#driveReset{background:rgba(23,22,51,.8);border:1px solid var(--line);white-space:nowrap;
+    color:var(--muted);font-size:12px;padding:7px 12px;border-radius:999px;cursor:pointer;transition:color .2s,border-color .2s}
+  #driveSkip:hover,#stopsToggle:hover,#driveReset:hover{color:var(--ink);border-color:var(--violet)}
   #driveAgain{border-color:rgba(255,209,102,.55);color:var(--gold)}
   #driveAgain:hover{border-color:var(--gold);color:var(--ink)}
   .card.pre-arrival{opacity:0;transform:translateY(18px) scale(.92);pointer-events:none}
+  #grid.stops-hidden{display:none}
+  .moon-hint{cursor:pointer}
   .journey-hud{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
     padding:10px 14px;background:rgba(23,22,51,.72);backdrop-filter:blur(6px)}
   .stops{display:flex;gap:6px;flex-wrap:wrap}
@@ -655,7 +686,7 @@
 <!-- ================= HUB ================= -->
 <main class="wrap" id="hub" aria-hidden="true">
   <div class="topline">
-    <div class="brand"><div class="planet"><span class="moon-orbit"><span class="moon"></span></span></div><b>Birthday Universe</b></div>
+    <div class="brand"><div class="planet"><span class="moon-orbit"><span class="moon"></span></span></div><span class="avatar-badge-wrap"><img class="avatar-badge" src="photos/momo-avatar-badge.jpg" alt=""><span class="moon-orbit"><span class="moon"></span></span></span><b>Birthday Universe</b></div>
     <div class="countdown"><span class="dot"></span><span id="cd" class="tnum">—</span></div>
   </div>
 
@@ -668,9 +699,13 @@
   <div class="journey">
     <div class="journey-hud">
       <div class="stops" id="stops"></div>
-      <button id="driveSkip" type="button" hidden>skip the drive ⏭</button>
-      <button id="driveAgain" type="button" hidden>🌙 drive the night again</button>
-      <div class="stops-count" id="stopsCount">Stops: 0/10</div>
+      <div class="hud-right">
+        <button id="driveSkip" type="button" hidden>skip the drive ⏭</button>
+        <button id="driveAgain" type="button" hidden>🌙 drive the night again</button>
+        <button id="stopsToggle" type="button">Hide stops</button>
+        <button id="driveReset" type="button" title="Start the night over">↺ Reset</button>
+        <div class="stops-count" id="stopsCount">Stops: 0/10</div>
+      </div>
     </div>
   </div>
 
@@ -817,6 +852,11 @@
   <button class="back" data-back>← Orbit</button>
   <div class="scene-inner">
     <div class="finale">
+      <div class="finale-portrait-wrap">
+        <span class="ring r1"><i></i></span>
+        <span class="ring r2"><i></i></span>
+        <img class="finale-portrait" src="photos/momo-avatar.jpg" alt="">
+      </div>
       <div class="eyebrow" style="color:var(--gold)">The last stop · sunrise</div>
       <h2>Here's to <span id="finaleName">★NAME★</span></h2>
       <p class="finale-story">Ten stops. One long night. We drove the whole way here — and it's morning now. It was always going to end at you.</p>
@@ -1185,6 +1225,7 @@ const Journey=(function(){
   const ctx=cv.getContext("2d");
   const skyOverlayEl=$("#skyOverlay");
   const stopsEl=$("#stops"), countEl=$("#stopsCount"), skipBtn=$("#driveSkip"), againBtn=$("#driveAgain");
+  const toggleBtn=$("#stopsToggle"), resetBtn=$("#driveReset");
   let W=0,H=0,horizonY=0,SCL=1;
 
   /* ---------- persisted stop state ---------- */
@@ -1283,6 +1324,15 @@ const Journey=(function(){
   const stars=Array.from({length:16},()=>({x:Math.random(), y:Math.random(), r:Math.random()*1.2+.4, ph:Math.random()*Math.PI*2}));
   const SPAN=260, N_SIDE=14;
   const roadside=Array.from({length:N_SIDE},(_,i)=>({z:(i+1)*SPAN, side:i%2? 1:-1, tree:i%3===0}));
+  /* moon easter-egg: click the moon for a wish — glow pulse + shooting stars */
+  let moonPulse=0; const shoots=[];
+  function moonPos(){ return { x:W*0.80, y:horizonY*0.38, r:H*0.06 }; }
+  function pokeMoon(){
+    moonPulse=1;
+    for(let i=0;i<6;i++) shoots.push({ x:W*(0.4+Math.random()*0.6), y:Math.random()*horizonY*0.55,
+      vx:-(5+Math.random()*5), vy:2.4+Math.random()*2.2, life:1 });
+    toast("🌙 make a wish, Momo…", 3200);
+  }
 
   function easeOutCubic(t){ return 1-Math.pow(1-t,3); }
   /* single gentle frequency: long sweeping bends, no far-field S-kinks */
@@ -1319,21 +1369,54 @@ const Journey=(function(){
   }
   if(skipBtn) skipBtn.addEventListener("click",()=>finishIntro(true));
 
-  /* ---------- replay: reset the night after the sunrise (stops stay revisitable anyway) ---------- */
-  if(againBtn) againBtn.addEventListener("click",()=>{
+  /* moon poke: the canvas is pointer-events:none, so hit-test window clicks.
+     Only on the hub (intro gone, no scene/lightbox open), and never when the
+     click actually landed on interactive content. */
+  addEventListener("click",(e)=>{
+    if(!intro.classList.contains("gone") || document.querySelector(".scene.on")) return;
+    const t=e.target;
+    if(t && t.closest && t.closest("button,a,input,textarea,.card,.scene,#gate,#toast")) return;
+    const m=moonPos(), dx=e.clientX-m.x, dy=e.clientY-m.y, hit=m.r*2.1;
+    if(dx*dx+dy*dy <= hit*hit) pokeMoon();
+  });
+
+  /* ---------- reset: start the night over (stops stay revisitable anyway; this
+       just rewinds the sky + counter). Available anytime via ↺; also offered as
+       a celebratory "drive again" once the sunrise is reached. ---------- */
+  function resetNight(){
     visited=[]; sunProgress=0; sunriseDone=false; sunAnimating=false; sunStartTs=null;
     try{ localStorage.removeItem("bday_stops"); localStorage.removeItem("bday_sunrise_done"); }catch(e){}
     refreshChips(); applyPageOverlay();
     toast("Windows down, tank full — the night is young again 🌙",4200);
+  }
+  if(againBtn) againBtn.addEventListener("click",resetNight);
+  if(resetBtn) resetBtn.addEventListener("click",resetNight);
+
+  /* ---------- hide/show the destination cards to enjoy the open road ---------- */
+  if(toggleBtn) toggleBtn.addEventListener("click",()=>{
+    const g=$("#grid"); const hidden=g.classList.toggle("stops-hidden");
+    toggleBtn.textContent = hidden ? "Show stops" : "Hide stops";
+    if(!hidden && !reduceMotion) g.animate([{opacity:0,transform:"translateY(10px)"},{opacity:1,transform:"none"}],{duration:340,easing:"cubic-bezier(.2,.9,.3,1.15)"});
   });
 
   /* ---------- tap-a-card arrival: destination sign grows from the horizon ---------- */
+  let arrivalTimer=null;
   function arrive(id, emoji){
     if(introSeq) finishIntro(true);
     if(reduceMotion){ openScene(id); return; }
     if(arrival && arrival.id===id) return;
-    arrival={ id, emoji, z: camZ + DEPTH/0.045, t0:performance.now() };
+    if(arrivalTimer) clearTimeout(arrivalTimer);
+    arrival={ id, emoji, z: camZ + DEPTH/0.045 };
     speedTarget=3.2;
+    /* Guaranteed open on a REAL-TIME timer, independent of the animation loop.
+       Opening (and therefore stop-tracking) must never hinge on the rAF loop
+       reaching a threshold — a throttled/backgrounded tab could otherwise stall
+       the drive and the scene would never open. The visual arrival still plays. */
+    arrivalTimer=setTimeout(()=>{
+      arrivalTimer=null;
+      if(arrival && arrival.id===id){ arrival=null; speedTarget=1; }
+      openScene(id);
+    }, 950);
   }
 
   function update(ts){
@@ -1361,12 +1444,9 @@ const Journey=(function(){
     }
 
     if(arrival){
+      /* visual only: brake as the sign nears; the real open is timer-driven above */
       const p=persOf(arrival.z);
-      if(p>0.45) speedTarget=Math.max(0.15, 3.2*(1-(p-0.45)/0.45));
-      if(p>=0.88 || ts-arrival.t0>2600){
-        const id=arrival.id; arrival=null; speedTarget=1;
-        openScene(id);
-      }
+      speedTarget = p>0.45 ? Math.max(0.15, 3.2*(1-(p-0.45)/0.45)) : 3.2;
     } else if(!introSeq){
       speedTarget=1;
     }
@@ -1381,6 +1461,12 @@ const Journey=(function(){
         Confetti.burst(160);
         applyPageOverlay();
       }
+    }
+
+    if(moonPulse>0) moonPulse=Math.max(0, moonPulse-dt/900);
+    for(let i=shoots.length-1;i>=0;i--){
+      const s=shoots[i]; s.x+=s.vx*(dt/16.7); s.y+=s.vy*(dt/16.7); s.life-=dt/1100;
+      if(s.life<=0 || s.x<-40 || s.y>horizonY) shoots.splice(i,1);
     }
   }
 
@@ -1576,7 +1662,27 @@ const Journey=(function(){
       });
       ctx.restore();
     }
-    drawMoon(W*0.80, horizonY*0.38, H*0.06, Math.max(0,1-p*1.15));
+    /* shooting stars (from the moon poke) */
+    if(shoots.length){
+      ctx.save(); ctx.lineCap="round";
+      shoots.forEach(s=>{
+        ctx.globalAlpha=Math.max(0,s.life)*0.9;
+        const grad=ctx.createLinearGradient(s.x,s.y,s.x-s.vx*4,s.y-s.vy*4);
+        grad.addColorStop(0,"#fff"); grad.addColorStop(1,"rgba(255,255,255,0)");
+        ctx.strokeStyle=grad; ctx.lineWidth=2;
+        ctx.beginPath(); ctx.moveTo(s.x,s.y); ctx.lineTo(s.x-s.vx*4,s.y-s.vy*4); ctx.stroke();
+      });
+      ctx.restore();
+    }
+    const mp=moonPos();
+    drawMoon(mp.x, mp.y, mp.r, Math.max(0,1-p*1.15));
+    if(moonPulse>0){
+      ctx.save();
+      const ring=(1-moonPulse)*mp.r*3.2;
+      ctx.globalAlpha=moonPulse*0.5; ctx.strokeStyle="#F5F3FF"; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(mp.x,mp.y,mp.r+ring,0,7); ctx.stroke();
+      ctx.restore();
+    }
     if(sunAnimating || sunriseDone) drawSun(W*0.62, horizonY, sunProgress);
     drawHills();
     drawRoadRows();
@@ -1868,6 +1974,11 @@ const Lightbox=(function(){
 /* ============ FINALE FIREWORKS ============ */
 $("#fireworks").addEventListener("click",()=>{
   let n=0; const iv=setInterval(()=>{ Confetti.burst(90, innerWidth*(0.2+Math.random()*0.6), innerHeight*(0.2+Math.random()*0.4)); if(++n>6)clearInterval(iv); },240);
+  const portrait=$(".finale-portrait-wrap");
+  if(portrait && !reduceMotion) portrait.animate(
+    [{transform:"scale(1)"},{transform:"scale(1.12)"},{transform:"scale(1)"}],
+    {duration:700,easing:"cubic-bezier(.2,.8,.2,1.2)"}
+  );
 });
 
 /* ============ SCRATCH & REVEAL ============ */

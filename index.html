@@ -291,6 +291,23 @@
   .spotify-embed{max-width:420px;width:100%;margin-top:2px}
   .spotify-embed iframe{width:100%;display:block;border:0;border-radius:12px}
 
+  /* ---------- Mixtape volumes (multi-playlist links) ---------- */
+  .volumes{max-width:420px;width:100%;margin-top:4px;display:flex;flex-direction:column;gap:10px}
+  .volumes-lead{margin:0;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);font-weight:700;text-align:center}
+  .vol-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+  .vol-list li{counter-increment:vol}
+  .vol-list a{
+    display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;
+    background:var(--panel);color:var(--ink);text-decoration:none;font-size:13.5px;transition:border-color .2s,transform .15s;
+  }
+  .vol-list a:hover{border-color:var(--mint);transform:translateX(2px)}
+  .vol-list a .vnum{
+    flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;
+    background:#0c0a24;color:var(--gold);font-size:11px;font-weight:800;font-variant-numeric:tabular-nums;
+  }
+  .vol-list a .vname{flex:1}
+  .vol-list a .vgo{color:var(--muted);font-size:11px}
+
   /* ---------- Finale ---------- */
   .finale{text-align:center;display:grid;gap:18px;place-items:center;padding:20px}
   .finale h2{font-size:clamp(30px,7vw,56px);font-family:var(--display)}
@@ -727,6 +744,10 @@
       <div id="spotifyEmbed" class="spotify-embed" hidden></div>
       <audio id="tapeAudio" preload="none"></audio>
       <p class="scratch-hint" id="tapeHint">Tap a track to play it 🎧</p>
+      <div class="volumes" id="volumes" hidden>
+        <p class="volumes-lead">The full mixtape — in volumes</p>
+        <ol class="vol-list" id="volList"></ol>
+      </div>
     </div>
   </div>
 </section>
@@ -790,6 +811,22 @@ const CONFIG = {
   // Both are optional — leave "" and the tape melody plays instead.
   spotify: "",
   montageAudio: "",     // e.g. "audio/theme-clip.mp3" — a ~30s clip that loops under the film
+
+  // Mixtape volumes — the full song list split across multiple Spotify playlists (one
+  // embed can't hold it all). Shown as a linked list beneath the tracklist. Sequenced to
+  // flow: personal classics -> Punjabi/Bollywood -> indie -> a full English arc.
+  mixtapeVolumes: [
+    { label:"Vol. 1 — Classics & Akon",        url:"https://open.spotify.com/playlist/3lPn08p4OuftPzzx60gXt2?utm_source=anthropic&utm_medium=claude&go=1&nap_web=1&request_id=6672203c-d0a4-41f8-932d-f9225b9f1e2d&nl=spotify%3Anl%3ACAASEGZyIDzQpEH4ky35IlufHi0aGDk6M2xQbjA4cDRPdWZ0UHp6eDYwZ1h0MiADMAPgAznoA46Ty9z0M%2FADoAT6AwktODkyOTE3ODg%3D" },
+    { label:"Vol. 2 — Punjabi I",               url:"https://open.spotify.com/playlist/7MiBSbUjQRDl8QQgCSzXlJ?utm_source=anthropic&utm_medium=claude&go=1&nap_web=1&request_id=b69ea5e6-e0e6-4220-9044-9887fe3592fe&nl=spotify%3Anl%3ACAASELaepebg5kIgkESYh%2F41kv4aGDk6N01pQlNiVWpRUkRsOFFRZ0NTelhsSiADMAPgAznoA%2FC0y9z0M%2FADoAT6AwktODkyOTE3ODg%3D" },
+    { label:"Vol. 3 — Punjabi & Bollywood",     url:"https://open.spotify.com/playlist/2vDKx1wAOfE37j0xY8NjRs?utm_source=anthropic&utm_medium=claude&go=1&nap_web=1&request_id=e169c711-8d8d-4ff8-823d-ebbc0953c764&nl=spotify%3Anl%3ACAASEOFpxxGNjU%2F4gj3rvAlTx2QaGDk6MnZES3gxd0FPZkUzN2oweFk4TmpScyADMAPgAznoA7zYy9z0M%2FADoAT6AwktODkyOTE3ODg%3D" },
+    { label:"Vol. 4 — Indie I",                 url:"https://open.spotify.com/playlist/3wXlUrYeul6ymG5WiEy645?utm_source=anthropic&utm_medium=claude&go=1&nap_web=1&request_id=8d4dac11-5a07-4b14-ad3c-0752b8cc0471&nl=spotify%3Anl%3ACAASEI1NrBFaB0sUrTwHUrjMBHEaGDk6M3dYbFVyWWV1bDZ5bUc1V2lFeTY0NSADMAPgAznoA%2BaZzNz0M%2FADoAT6AwktODkyOTE3ODg%3D" },
+    { label:"Vol. 5 — Indie II",                url:"https://open.spotify.com/playlist/6iWwXI0606wJa8UM1IAbw1?utm_source=anthropic&utm_medium=claude&go=1&nap_web=1&request_id=675437bd-5f02-4c48-8ca4-1e5abea2b00e&nl=spotify%3Anl%3ACAASEGdUN71fAkxIjKQeWr6isA4aGDk6NmlXd1hJMDYwNndKYThVTTFJQWJ3MSADMAPgAznoA6bGzNz0M%2FADoAT6AwktODkyOTE3ODg%3D" },
+    { label:"Vol. 6 — English Mix I",           url:"https://open.spotify.com/playlist/0NoEnXgBr8pSQ61cYxzinK?utm_source=anthropic&utm_medium=claude&go=1&nap_web=1&request_id=10d630dd-5875-4471-a661-82543e4b60d8&nl=spotify%3Anl%3ACAASEBDWMN1YdURxpmGCVD5LYNgaGDk6ME5vRW5YZ0JyOHBTUTYxY1l4emluSyADMAPgAznoA%2F%2Bl5Nz0M%2FADoAT6AwktODkyOTE3ODg%3D" },
+    { label:"Vol. 7 — English Mix II",          url:"https://open.spotify.com/playlist/2IGa05l6VjFezFMW9oyx9H?utm_source=anthropic&utm_medium=claude&go=1&nap_web=1&request_id=e908a7c3-4454-4c4d-8c5b-c7f815f2370c&nl=spotify%3Anl%3ACAASEOkIp8NEVExNjFvH%2BBXyNwwaGDk6MklHYTA1bDZWakZlekZNVzlveXg5SCADMAPgAznoA9bJ5Nz0M%2FADoAT6AwktODkyOTE3ODg%3D" },
+    { label:"Vol. 8 — English Mix III",         url:"https://open.spotify.com/playlist/4WqrET7M6HGpvjcxx2lJXb?utm_source=anthropic&utm_medium=claude&go=1&nap_web=1&request_id=b48d6af0-98af-49c4-9152-4bb9fb311b6d&nl=spotify%3Anl%3ACAASELSNavCYr0nEkVJLufsxG20aGDk6NFdxckVUN002SEdwdmpjeHgybEpYYiADMAPgAznoA6ad5dz0M%2FADoAT6AwktODkyOTE3ODg%3D" },
+    { label:"Vol. 9 — English Ballads",         url:"https://open.spotify.com/playlist/2Q9n2lUmMG5Z0BLEZnwgwT?utm_source=anthropic&utm_medium=claude&go=1&nap_web=1&request_id=e46604e3-4d21-43fb-a7d0-fd40d7df7baf&nl=spotify%3Anl%3ACAASEORmBONNIUP7p9D9QNffe68aGDk6MlE5bjJsVW1NRzVaMEJMRVpud2d3VCADMAPgAznoA56A5tz0M%2FADoAT6AwktODkyOTE3ODg%3D" },
+    { label:"Vol. 10 — English Closers",        url:"https://open.spotify.com/playlist/7GclnVIO2sfYFOCQQkz7al?utm_source=anthropic&utm_medium=claude&go=1&nap_web=1&request_id=a531c3b1-795a-40ae-9137-d317088e74ac&nl=spotify%3Anl%3ACAASEKUxw7F5WkCukTfTFwiOdKwaGDk6N0djbG5WSU8yc2ZZRk9DUVFrejdhbCADMAPgAznoA%2FTL5tz0M%2FADoAT6AwktODkyOTE3ODg%3D" }
+  ],
 
   // Mixtape liner notes — the on-tape tracklist. Optionally give a track its own `src`
   // (an mp3 in audio/) to play that one inline; otherwise a soft tape melody plays.
@@ -1376,6 +1413,16 @@ const Mixtape=(function(){
     if(hint) hint.textContent="The full playlist's right here — press play on Spotify 🎧";
   })();
   if(!hasAudio && !CONFIG.spotify && hint) hint.textContent="A soft tape melody for now — drop mp3s in audio/ (and set each track's src) to hear the real songs 🎧";
+  // Mixtape volumes: the full song list, split across multiple playlists, shown as links.
+  (function(){
+    const wrap=$("#volumes"), list=$("#volList"); if(!wrap || !list || !CONFIG.mixtapeVolumes || !CONFIG.mixtapeVolumes.length) return;
+    CONFIG.mixtapeVolumes.forEach((v,i)=>{
+      const li=document.createElement("li");
+      li.innerHTML=`<a href="${v.url}" target="_blank" rel="noopener"><span class="vnum">${i+1}</span><span class="vname">${v.label.replace(/^Vol\.\s*\d+\s*—\s*/,"")}</span><span class="vgo">Open ↗</span></a>`;
+      list.appendChild(li);
+    });
+    wrap.hidden=false;
+  })();
   return { reset:()=>{ if(playing) stop(); }, playFirst:()=>{ if(!playing) playTrack(0); }, isPlaying:()=>playing };
 })();
 

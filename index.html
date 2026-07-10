@@ -657,7 +657,10 @@
      float above the drive canvas, which does the actual drawing for this sequence. ---------- */
   .opening-overlay{position:fixed;inset:0;z-index:1;pointer-events:none;display:none}
   .opening-overlay.on{display:block}
-  .opening-text{position:absolute;left:0;right:0;top:56%;transform:translateY(-50%);text-align:center;
+  /* during the opening cinematic, clear the hub so only the car scene shows */
+  #hub .hero,#hub .journey,#hub #grid,#hub .footnote{transition:opacity .45s ease}
+  #hub.cine .hero,#hub.cine .journey,#hub.cine #grid,#hub.cine .footnote{opacity:0;pointer-events:none}
+  .opening-text{position:absolute;left:0;right:0;top:30%;transform:translateY(-50%);text-align:center;
     font-family:var(--display);font-size:clamp(22px,5.4vw,42px);color:var(--ink);opacity:0;
     text-shadow:0 4px 24px rgba(0,0,0,.75);transition:opacity .5s ease;padding:0 24px}
   .opening-text.show{opacity:1}
@@ -1459,6 +1462,7 @@ const Journey=(function(){
   }
   function startOpeningCine(){
     openingActive=true; openingElapsed=0;
+    if(hub) hub.classList.add("cine");
     if(openingOverlayEl) openingOverlayEl.classList.add("on");
     if(openingTextEl){ openingTextEl.classList.remove("show"); openingTextEl.textContent=""; }
     if(openingSkipBtn) openingSkipBtn.hidden=false;
@@ -1467,6 +1471,7 @@ const Journey=(function(){
   function finishOpeningCine(){
     if(!openingActive) return;
     openingActive=false;
+    if(hub) hub.classList.remove("cine");
     if(openingOverlayEl) openingOverlayEl.classList.remove("on");
     if(openingTextEl){ openingTextEl.classList.remove("show"); openingTextEl.textContent=""; }
     if(openingSkipBtn) openingSkipBtn.hidden=true;
@@ -1513,6 +1518,7 @@ const Journey=(function(){
     if(skipBtn) skipBtn.hidden=true;
     if(openingActive){
       openingActive=false;
+      if(hub) hub.classList.remove("cine");
       if(openingOverlayEl) openingOverlayEl.classList.remove("on");
       if(openingTextEl){ openingTextEl.classList.remove("show"); openingTextEl.textContent=""; }
       if(openingSkipBtn) openingSkipBtn.hidden=true;

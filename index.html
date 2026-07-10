@@ -1488,7 +1488,7 @@ function cascadeEntrance(){
   const bgCv=$("#driveCv");
   if(bgCv) anims.push(bgCv.animate([{opacity:0},{opacity:1}],{duration:900,easing:"ease-out",fill:"backwards"}));
 
-  const CHROME_STEP=550; // ~half a second between each piece of chrome so it can be read as it lands
+  const CHROME_STEP=1500; // 1.5s between each piece of chrome so it can be read as it lands
   let t=CHROME_STEP;
   [$(".topline"), $(".hero .eyebrow"), $(".hero h1"), $(".hero p"), $(".journey-hud")].forEach(el=>{
     if(!el) return;

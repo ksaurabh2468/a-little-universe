@@ -215,6 +215,8 @@
   .back:hover{border-color:var(--violet)}
   .scene h2{font-family:var(--display);font-size:clamp(26px,5vw,40px);margin-bottom:6px}
   .scene .lead{color:var(--muted);margin:0 0 26px;font-size:16px}
+  .scene-place{font-family:var(--display);color:var(--gold);font-size:13.5px;letter-spacing:.02em;margin:-2px 0 14px}
+  .scene-place .sp-vibe{color:var(--muted);font-style:italic}
 
   /* ---------- Wrapped ---------- */
   .wcard{
@@ -239,9 +241,19 @@
 
   /* ---------- Game ---------- */
   .gamewrap{border:1px solid var(--line);border-radius:20px;overflow:hidden;background:#0c0a24}
-  #game{display:block;width:100%;height:auto;touch-action:none}
+  #game,#bowl,#puck{display:block;width:100%;height:auto;touch-action:none;cursor:crosshair}
   .gamebar{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}
   .gamebar b{color:var(--ink)}
+  /* arcade: game switcher */
+  .arcade-tabs{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:2px 0 16px}
+  .arc-tab{font:inherit;font-weight:700;font-size:14px;cursor:pointer;padding:9px 15px;border-radius:999px;
+    background:rgba(255,255,255,.05);color:var(--muted);border:1px solid var(--line);transition:.2s}
+  .arc-tab:hover{border-color:var(--violet);color:var(--ink);transform:translateY(-1px)}
+  .arc-tab.on{background:linear-gradient(100deg,var(--violet),var(--coral));color:#160b1a;border-color:transparent}
+  .arc-panel{display:none}
+  .arc-panel.on{display:block;animation:arcfade .3s ease}
+  @keyframes arcfade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .arc-sub{font-size:15px;margin:0 0 14px}
 
   /* ---------- Cake ---------- */
   .cakestage{display:grid;place-items:center;gap:22px;text-align:center;padding:10px 0 6px}
@@ -1658,7 +1670,7 @@ const Journey=(function(){
           introSeq=null;
           drip.phase="arrive"; drip.estT=0;
           revealCard(cardEls()[drip.n], true);
-          placeBanner(CARDS[drip.n].place, CARDS[drip.n].vibe, true); // persist while parked here
+          placeBanner(CARDS[drip.n].place, CARDS[drip.n].vibe); // announce on arrival, then auto-fade
           speedTarget=0;
         }
       } else if(drip.phase==="arrive"){
@@ -2310,7 +2322,20 @@ $(".planet").addEventListener("click",()=>{
 /* ============ SCENE ROUTER ============ */
 function openScene(id){
   const s=document.getElementById("scene-"+id);
-  if(!s)return; s.classList.add("on"); s.scrollTop=0;
+  if(!s)return;
+  /* the driving location banner is road-HUD only — hide it so it doesn't sit on
+     top of this page; instead show THIS stop's own place inside the page. */
+  const pb=document.getElementById("placeBanner"); if(pb) pb.classList.remove("show");
+  const cd=CARDS.find(c=>c.id===id);
+  if(cd && cd.place){
+    let badge=s.querySelector(".scene-place");
+    if(!badge){
+      badge=document.createElement("div"); badge.className="scene-place";
+      const h2=s.querySelector("h2"); if(h2) h2.insertAdjacentElement("afterend", badge);
+    }
+    if(badge) badge.innerHTML="📍 "+cd.place+(cd.vibe?" <span class='sp-vibe'>· "+cd.vibe+"</span>":"");
+  }
+  s.classList.add("on"); s.scrollTop=0;
   if(id==="game") Game.reset();
   if(id==="cake") Cake.draw();
   if(id==="scratch") Scratch.reset();

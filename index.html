@@ -675,6 +675,12 @@
   /* ---------- finale storyline line ---------- */
   .finale-story{color:var(--muted);font-size:13.5px;line-height:1.55;max-width:48ch;margin:-4px 0 0}
 
+  /* ---------- sticker reactions (illustrated avatar, celebratory pop-ins) ---------- */
+  #stickerPop{position:fixed;z-index:80;left:50%;bottom:18px;transform:translateX(-50%) translateY(20px) scale(.85);
+    opacity:0;pointer-events:none;transition:opacity .35s ease,transform .35s cubic-bezier(.2,.8,.2,1.2)}
+  #stickerPop.show{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
+  #stickerPop img{display:block;height:132px;width:auto;filter:drop-shadow(0 14px 30px rgba(0,0,0,.55))}
+
   @media (prefers-reduced-motion: reduce){
     *{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.05ms!important}
   }
@@ -706,6 +712,7 @@
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="placeBanner" role="status" aria-live="polite"></div>
 <div id="lightbox" aria-hidden="true"><button id="lightboxClose" aria-label="Close">✕</button><figure><img id="lightboxImg" alt=""><figcaption id="lightboxCap"></figcaption></figure></div>
+<div id="stickerPop" aria-hidden="true"><img id="stickerPopImg" alt=""></div>
 <div id="avatarCompanion" aria-hidden="true" role="button" tabindex="0" aria-label="Say hi to Momo's avatar"><span class="la-ring"></span></div>
 <audio id="bgMusicEl" loop preload="none"></audio>
 <button id="bgMusicToggle" class="bg-music-toggle" hidden aria-label="Toggle background music" aria-pressed="false">🔊</button>
@@ -2817,6 +2824,30 @@ const LiveAvatar=(function(){
   return { mountCompanion, mountFinale, mountHeader };
 })();
 LiveAvatar.mountHeader();
+
+/* ============ STICKER REACTIONS ============
+   Illustrated avatar stickers (photos/stickers/) that pop in briefly at a
+   few big emotional beats. Purely additive — new listeners only, doesn't
+   touch the existing handlers for these buttons. */
+const Stickers=(function(){
+  const pop=$("#stickerPop"), img=$("#stickerPopImg");
+  if(!pop||!img) return { fire:()=>{} };
+  let hideT=null;
+  function fire(name,ms=2200){
+    img.src="photos/stickers/"+name+".png";
+    pop.classList.remove("show"); void pop.offsetWidth; pop.classList.add("show");
+    clearTimeout(hideT); hideT=setTimeout(()=>pop.classList.remove("show"),ms);
+  }
+  return { fire };
+})();
+if(typeof enter==="function"){
+  const _baseEnter=enter;
+  enter=function(){ _baseEnter(); Stickers.fire("surprised"); };
+}
+const _fireworksBtn=$("#fireworks");
+if(_fireworksBtn) _fireworksBtn.addEventListener("click",()=>Stickers.fire("heart-hands",2600));
+const _leverBtn=$("#lever");
+if(_leverBtn) _leverBtn.addEventListener("click",()=>Stickers.fire("laughing",1800));
 </script>
 </body>
 </html>

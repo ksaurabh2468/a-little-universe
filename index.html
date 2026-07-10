@@ -825,6 +825,31 @@
 </section>
 
 <script>
+/* DEV ONLY: deterministic frame driver for headless verification — inert
+   unless the page is opened with #pump in the URL. Lets tooling step
+   requestAnimationFrame manually in unfocused tabs (where browsers suspend
+   rAF entirely), e.g. __pump(60) advances every animation exactly 1s. */
+if(location.hash==="#pump"){
+  Object.defineProperty(Document.prototype,"hidden",{get(){return false},configurable:true});
+  window.__q=[];
+  window.requestAnimationFrame=function(cb){ window.__q.push(cb); return window.__q.length; };
+  window.__pump=function(n){
+    let t=(window.__t=window.__t||performance.now()), ran=0, err=null;
+    for(let i=0;i<n;i++){
+      const batch=window.__q.splice(0);
+      if(!batch.length) break;
+      t+=16.7;
+      for(const cb of batch){
+        try{ cb(t); }catch(e){ err=String(e&&e.stack||e); }
+      }
+      ran++;
+    }
+    window.__t=t;
+    return {ran, err, pending: window.__q.length};
+  };
+}
+</script>
+<script>
 /* =====================================================================
    CONFIG — edit everything here. This is your control panel.
    ===================================================================== */
@@ -1250,11 +1275,13 @@ const Journey=(function(){
   const SPAN=260, N_SIDE=14;
   const roadside=Array.from({length:N_SIDE},(_,i)=>({z:(i+1)*SPAN, side:i%2? 1:-1, tree:i%3===0}));
 
-  function curveAt(z){ return Math.sin(z*0.0011)*0.85 + Math.sin(z*0.00047)*0.45; }
+  function easeOutCubic(t){ return 1-Math.pow(1-t,3); }
+  /* single gentle frequency: long sweeping bends, no far-field S-kinks */
+  function curveAt(z){ return Math.sin(z*0.00045)*0.8; }
   function persOf(z){ const rel=z-camZ; return rel<=DEPTH ? 1 : DEPTH/rel; }
   function rowOf(pers){ return horizonY + pers*(H-horizonY); }
   function roadCenter(pers, zWorld){
-    return W/2 + curveAt(zWorld)*Math.pow(1-pers,1.6)*W*0.5 - steer*(1-pers)*30;
+    return W/2 + curveAt(zWorld)*Math.pow(1-pers,1.4)*W*0.24 - steer*(1-pers)*22;
   }
   function roadHalf(pers){ return pers*W*0.38 + 1.5; }
 
@@ -1368,168 +1395,178 @@ const Journey=(function(){
     ctx.fillStyle=grad; ctx.beginPath(); ctx.arc(cx,cy,r,0,7); ctx.fill();
     ctx.restore();
   }
-  function drawHills(offset){
-    const hillY=roadY-H*0.02, period=Math.max(160,W*0.9);
+  function drawHills(){
+    /* silhouette ridge just above the horizon, drifting gently with the curve */
+    const ridgeY=horizonY+1, drift=-curveAt(camZ+DEPTH/0.2)*W*0.06 - (camZ*0.02)%W;
     ctx.fillStyle="#14122e";
-    for(let i=-1;i<=Math.ceil(W/period)+1;i++){
-      const baseX=i*period-(offset%period);
+    const period=W*0.55;
+    for(let i=-2;i<=Math.ceil(W/period)+2;i++){
+      const bx=i*period+(drift%period);
       ctx.beginPath();
-      ctx.moveTo(baseX-period*0.2, hillY);
-      ctx.quadraticCurveTo(baseX+period*0.25, hillY-H*0.22, baseX+period*0.55, hillY-H*0.06);
-      ctx.quadraticCurveTo(baseX+period*0.8, hillY+H*0.05, baseX+period*1.1, hillY);
-      ctx.lineTo(baseX+period*1.1, roadY+4);
-      ctx.lineTo(baseX-period*0.2, roadY+4);
+      ctx.moveTo(bx, ridgeY);
+      ctx.quadraticCurveTo(bx+period*0.3, ridgeY-H*0.10, bx+period*0.6, ridgeY-H*0.03);
+      ctx.quadraticCurveTo(bx+period*0.85, ridgeY+H*0.02, bx+period*1.05, ridgeY);
       ctx.closePath(); ctx.fill();
     }
+    ctx.fillRect(0,ridgeY-1,W,2);
   }
-  function drawMid(offset){
-    const period=110, poleTopY=roadY-H*0.34;
-    ctx.fillStyle="#1d1a3f";
-    for(let x=-period; x<W+period; x+=period){
-      const px=x-(offset%period);
-      ctx.fillRect(px-1.5, poleTopY, 3, H*0.34);
-      ctx.fillRect(px-9, poleTopY+2, 18, 2.5);
+
+  function drawRoadRows(){
+    /* per-scanline road with perspective, curvature and headlight falloff */
+    const rows=Math.round(H-horizonY);
+    for(let i=1;i<=rows;i++){
+      const y=horizonY+i, pers=i/rows;
+      const zWorld=camZ + DEPTH/Math.max(pers,0.001);
+      const cx=roadCenter(pers,zWorld), half=roadHalf(pers);
+      const light=Math.max(0, Math.min(1,(pers-0.04)*1.5))*(1-sunProgress*0.55) + sunProgress*0.55;
+      /* 1.6px-tall rows overlap slightly so fractional DPRs can't leave hairline gaps */
+      ctx.fillStyle=rgbStr(lerpRGB([8,7,20],[26,22,52],light*0.8));
+      ctx.fillRect(0,y,W,1.6);
+      ctx.fillStyle=rgbStr(lerpRGB([13,12,32],[58,54,105],light));
+      ctx.fillRect(cx-half,y,half*2,1.6);
+      if(Math.floor(zWorld/9)%2===0){
+        const ew=Math.max(1,pers*4);
+        ctx.fillStyle="rgba(245,243,255,"+(0.12+0.38*light).toFixed(3)+")";
+        ctx.fillRect(cx-half,y,ew,1.6); ctx.fillRect(cx+half-ew,y,ew,1.6);
+      }
+      if(Math.floor(zWorld/12)%2===0){
+        const dw=Math.max(1,pers*7);
+        ctx.fillStyle="rgba(255,209,102,"+(0.20+0.55*light).toFixed(3)+")";
+        ctx.fillRect(cx-dw/2,y,dw,1.6);
+      }
     }
-    ctx.beginPath();
-    let first=true;
-    for(let x=-period; x<W+period*2; x+=period){
-      const px=x-(offset%period), topY=poleTopY+2;
-      if(first){ ctx.moveTo(px,topY); first=false; }
-      else{ ctx.quadraticCurveTo(px-period/2, topY+10, px, topY); }
-    }
-    ctx.strokeStyle="rgba(160,155,200,.35)"; ctx.lineWidth=1; ctx.stroke();
-    const tperiod=170;
-    for(let x=-tperiod; x<W+tperiod; x+=tperiod){
-      const flip=(Math.floor(x/tperiod)%2)*40;
-      const tx=x-(offset%tperiod)+flip, th=H*0.16, tw=H*0.11, ty=roadY;
-      ctx.fillStyle="#1d1a3f";
-      ctx.beginPath(); ctx.moveTo(tx,ty-th); ctx.lineTo(tx-tw/2,ty); ctx.lineTo(tx+tw/2,ty); ctx.closePath(); ctx.fill();
-    }
   }
-  function drawSign(){
-    if(!sign.active) return;
-    const postW=4, postH=H*0.30, boardW=44, boardH=34, baseY=roadY;
-    ctx.save(); ctx.translate(sign.x,0);
-    ctx.fillStyle="#1d1a3f"; ctx.fillRect(-postW/2, baseY-postH, postW, postH);
-    ctx.fillStyle="#171633"; ctx.strokeStyle="#2C2A52"; ctx.lineWidth=1.5;
-    roundRectPath(-boardW/2, baseY-postH-boardH+6, boardW, boardH, 8);
-    ctx.fill(); ctx.stroke();
-    ctx.font=Math.round(boardH*0.55)+"px system-ui"; ctx.textAlign="center"; ctx.textBaseline="middle";
-    ctx.fillText(sign.emoji, 0, baseY-postH-boardH/2+6);
-    ctx.restore();
-  }
-  function drawRoad(offset){
-    ctx.fillStyle="#0c0a24"; ctx.fillRect(0,roadY,W,roadH);
-    ctx.strokeStyle="rgba(255,255,255,.12)"; ctx.lineWidth=1;
-    ctx.beginPath(); ctx.moveTo(0,roadY+4); ctx.lineTo(W,roadY+4); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0,roadY+roadH-4); ctx.lineTo(W,roadY+roadH-4); ctx.stroke();
-    const midY=roadY+roadH/2, dashLen=26, gap=20, period=dashLen+gap;
-    ctx.setLineDash([dashLen,gap]); ctx.lineDashOffset=-(offset%period);
-    ctx.strokeStyle="#FFD166"; ctx.lineWidth=3;
-    ctx.beginPath(); ctx.moveTo(0,midY); ctx.lineTo(W,midY); ctx.stroke();
-    ctx.setLineDash([]);
-  }
-  function drawWheel(dx,cy,r){
-    ctx.save(); ctx.translate(dx,cy);
-    ctx.fillStyle="#14122e"; ctx.beginPath(); ctx.arc(0,0,r,0,7); ctx.fill();
-    ctx.strokeStyle="#171633"; ctx.lineWidth=2; ctx.stroke();
-    ctx.save(); ctx.rotate(wheelRot);
-    ctx.strokeStyle="rgba(245,243,255,.35)"; ctx.lineWidth=1.5;
-    for(let i=0;i<4;i++){ const a=i*Math.PI/2; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(Math.cos(a)*r*0.8, Math.sin(a)*r*0.8); ctx.stroke(); }
-    ctx.restore();
-    ctx.fillStyle="#FFD166"; ctx.beginPath(); ctx.arc(0,0,r*0.28,0,7); ctx.fill();
-    ctx.restore();
-  }
-  function drawBust(x,y,isDriver){
-    ctx.fillStyle= isDriver ? "#4ECDC4" : "#FF9BC0";
-    roundRectPath(x-9,y-2,18,16,6); ctx.fill();
-    ctx.fillStyle="#E8B98C"; ctx.beginPath(); ctx.arc(x,y-10,7,0,7); ctx.fill();
-    if(isDriver){
-      ctx.fillStyle="#2A2440";
-      ctx.beginPath(); ctx.arc(x,y-13,7.5,Math.PI,0); ctx.fill();
-      ctx.fillRect(x-7.5,y-14,15,4);
-      ctx.fillStyle="rgba(42,36,64,.7)";
-      ctx.beginPath(); ctx.arc(x,y-6,4,0,Math.PI); ctx.fill();
+
+  function drawPole(o){
+    const pers=persOf(o.z); if(pers>=1||pers<0.03) return;
+    const y=rowOf(pers), cx=roadCenter(pers,o.z), half=roadHalf(pers);
+    const x=cx + o.side*(half + 26*pers + 6), s=pers;
+    const light=Math.max(0.15, Math.min(1,(pers-0.04)*1.4));
+    if(o.tree){
+      const th=90*s, tw=54*s;
+      ctx.fillStyle=rgbStr(lerpRGB([16,14,40],[30,26,64],light));
+      ctx.beginPath(); ctx.moveTo(x,y-th); ctx.lineTo(x-tw/2,y); ctx.lineTo(x+tw/2,y); ctx.closePath(); ctx.fill();
     } else {
-      ctx.fillStyle="#2A2440";
-      ctx.beginPath();
-      ctx.moveTo(x-7,y-16); ctx.quadraticCurveTo(x-15,y-10,x-13,y+6);
-      ctx.quadraticCurveTo(x-9,y+2,x-7,y-8);
-      ctx.quadraticCurveTo(x,y-17,x+7,y-15);
-      ctx.quadraticCurveTo(x+8,y-19,x,y-19);
-      ctx.closePath(); ctx.fill();
+      const ph=110*s;
+      ctx.fillStyle=rgbStr(lerpRGB([20,17,48],[38,34,80],light));
+      ctx.fillRect(x-2*s,y-ph,4*s,ph);
+      ctx.fillRect(x-11*s,y-ph+3*s,22*s,3*s);
     }
   }
-  function drawCar(ts){
-    const carX=W*0.28, bodyW=Math.min(150,W*0.34), bodyH=H*0.24;
-    const bob = reduceMotion ? 0 : Math.sin(ts/480)*2;
-    const wheelR=bodyH*0.28;
-    const baseY=roadY-H*0.02+bob;
-    const carY=baseY-wheelR*1.3-bodyH;
-    ctx.save(); ctx.translate(carX,0);
 
-    const tlGrad=ctx.createRadialGradient(-bodyW/2+4, carY+bodyH*0.55, 0, -bodyW/2+4, carY+bodyH*0.55, 14);
-    tlGrad.addColorStop(0,"rgba(255,107,157,.55)"); tlGrad.addColorStop(1,"rgba(255,107,157,0)");
-    ctx.fillStyle=tlGrad; ctx.beginPath(); ctx.arc(-bodyW/2+4, carY+bodyH*0.55, 14,0,7); ctx.fill();
+  function drawSignAt(z, emoji){
+    /* destination board on the left shoulder, growing as it approaches */
+    const pers=persOf(z); if(pers>=1||pers<0.03) return;
+    const y=rowOf(pers), cx=roadCenter(pers,z), half=roadHalf(pers);
+    const x=cx + (half + 34*pers + 8), s=pers;
+    const postH=95*s, bw=86*s, bh=64*s;
+    ctx.fillStyle="#241f4d"; ctx.fillRect(x-2.5*s, y-postH, 5*s, postH);
+    ctx.fillStyle="#1b1840"; ctx.strokeStyle="rgba(255,209,102,.8)"; ctx.lineWidth=Math.max(1,2*s);
+    roundRectPath(x-bw/2, y-postH-bh+4*s, bw, bh, 10*s); ctx.fill(); ctx.stroke();
+    ctx.font=Math.round(Math.max(8,40*s))+"px system-ui"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.globalAlpha=Math.min(1, s*2);
+    ctx.fillText(emoji, x, y-postH-bh/2+4*s);
+    ctx.globalAlpha=1;
+  }
 
-    const hlAlpha=0.18*(1-sunProgress);
-    if(hlAlpha>0.01){
-      ctx.save(); ctx.globalAlpha=hlAlpha;
-      const hx=bodyW/2, hy=carY+bodyH*0.6;
-      const grad=ctx.createLinearGradient(hx,hy,hx+95,hy);
-      grad.addColorStop(0,"rgba(255,230,160,.9)"); grad.addColorStop(1,"rgba(255,230,160,0)");
-      ctx.fillStyle=grad;
-      ctx.beginPath(); ctx.moveTo(hx,hy-6); ctx.lineTo(hx+95,hy-30); ctx.lineTo(hx+95,hy+30); ctx.lineTo(hx,hy+6); ctx.closePath(); ctx.fill();
-      ctx.restore();
+  function drawCabin(){
+    /* windshield vignette */
+    const vg=ctx.createLinearGradient(0,0,0,H*0.3);
+    vg.addColorStop(0,"rgba(5,4,16,.55)"); vg.addColorStop(1,"rgba(5,4,16,0)");
+    ctx.fillStyle=vg; ctx.fillRect(0,0,W,H*0.3);
+
+    /* headlight pool thrown onto the road */
+    if(sunProgress<0.95){
+      const hp=ctx.createRadialGradient(W/2,H*0.9,10,W/2,H*0.9,W*0.34);
+      hp.addColorStop(0,"rgba(255,230,170,"+(0.10*(1-sunProgress)).toFixed(3)+")");
+      hp.addColorStop(1,"rgba(255,230,170,0)");
+      ctx.fillStyle=hp; ctx.fillRect(0,horizonY,W,H-horizonY);
     }
 
-    drawWheel(-bodyW*0.28, baseY, wheelR);
-    drawWheel(bodyW*0.28, baseY, wheelR);
-
-    const bg=ctx.createLinearGradient(0,carY,0,carY+bodyH);
-    bg.addColorStop(0,"#ff85ac"); bg.addColorStop(1,"#FF6B9D");
-    ctx.fillStyle=bg; roundRectPath(-bodyW/2, carY, bodyW, bodyH, 16); ctx.fill();
-
-    const winX=-bodyW*0.32, winY=carY+bodyH*0.06, winW=bodyW*0.62, winH=bodyH*0.5;
-    ctx.fillStyle="rgba(180,220,255,.22)"; roundRectPath(winX,winY,winW,winH,10); ctx.fill();
-
+    /* rear-view mirror: the two of us as silhouettes (driver right seat, India) */
+    const mw=Math.min(118,W*0.24), mh=30, mx=W/2-mw/2, my=8+bob*0.3;
+    ctx.fillStyle="#0e0c26"; roundRectPath(mx-3,my-3,mw+6,mh+6,9); ctx.fill();
+    ctx.fillStyle="#232047"; roundRectPath(mx,my,mw,mh,7); ctx.fill();
     ctx.save();
-    roundRectPath(winX,winY,winW,winH,10); ctx.clip();
-    drawBust(winX+winW*0.28, winY+winH*0.62, true);
-    drawBust(winX+winW*0.72, winY+winH*0.60, false);
+    roundRectPath(mx,my,mw,mh,7); ctx.clip();
+    ctx.fillStyle="#0d0b22";
+    const dyb=my+mh, dx=mx+mw*0.68, px2=mx+mw*0.30;
+    ctx.beginPath(); ctx.arc(dx,dyb-14,8,0,7); ctx.fill();
+    ctx.fillRect(dx-11,dyb-8,22,8);
+    ctx.beginPath(); ctx.arc(dx,dyb-11,8.5,0.15*Math.PI,0.85*Math.PI); ctx.fill();
+    ctx.beginPath(); ctx.arc(px2,dyb-14,8,0,7); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(px2-8,dyb-18); ctx.quadraticCurveTo(px2-14,dyb-6,px2-12,dyb);
+    ctx.lineTo(px2+12,dyb); ctx.quadraticCurveTo(px2+14,dyb-8,px2+8,dyb-18);
+    ctx.closePath(); ctx.fill();
+    ctx.fillRect(px2-11,dyb-6,22,6);
     ctx.restore();
 
-    ctx.fillStyle="#FFD166"; ctx.beginPath(); ctx.arc(bodyW/2-2, carY+bodyH*0.6, 3,0,7); ctx.fill();
+    /* A-pillars: dark slants framing the windshield so the cabin reads */
+    const apw=W*0.055;
+    let ap=ctx.createLinearGradient(0,0,apw,0);
+    ap.addColorStop(0,"rgba(6,5,17,.85)"); ap.addColorStop(1,"rgba(6,5,17,0)");
+    ctx.fillStyle=ap; ctx.fillRect(0,0,apw,H);
+    ap=ctx.createLinearGradient(W,0,W-apw,0);
+    ap.addColorStop(0,"rgba(6,5,17,.85)"); ap.addColorStop(1,"rgba(6,5,17,0)");
+    ctx.fillStyle=ap; ctx.fillRect(W-apw,0,apw,H);
+
+    /* dashboard — clearly darker than the world outside */
+    const dashTop=H*0.84+bob;
+    const dg=ctx.createLinearGradient(0,dashTop,0,H);
+    dg.addColorStop(0,"#0b0920"); dg.addColorStop(1,"#050410");
+    ctx.fillStyle=dg;
+    ctx.beginPath();
+    ctx.moveTo(0,H); ctx.lineTo(0,dashTop+10);
+    ctx.quadraticCurveTo(W/2,dashTop-12,W,dashTop+10);
+    ctx.lineTo(W,H); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle="rgba(155,107,255,.45)"; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(0,dashTop+10); ctx.quadraticCurveTo(W/2,dashTop-12,W,dashTop+10); ctx.stroke();
+    ctx.fillStyle="rgba(78,205,196,.8)"; ctx.beginPath(); ctx.arc(W*0.30,dashTop+16,2,0,7); ctx.fill();
+    ctx.fillStyle="rgba(255,107,157,.8)"; ctx.beginPath(); ctx.arc(W*0.35,dashTop+18,2,0,7); ctx.fill();
+
+    /* steering wheel, right-hand drive, turning with the road */
+    const wx=W*0.72, wy=H*1.06+bob*1.2, wr=H*0.34;
+    ctx.save(); ctx.translate(wx,wy); ctx.rotate(-steer*0.55);
+    ctx.strokeStyle="#332d63"; ctx.lineWidth=Math.max(9,H*0.05);
+    ctx.beginPath(); ctx.arc(0,0,wr,0,7); ctx.stroke();
+    ctx.strokeStyle="rgba(155,140,220,.25)"; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(0,0,wr+Math.max(4,H*0.024),Math.PI*1.15,Math.PI*1.85); ctx.stroke();
+    ctx.strokeStyle="#241f4d"; ctx.lineWidth=Math.max(6,H*0.032);
+    ctx.beginPath(); ctx.moveTo(-wr*0.88,0); ctx.lineTo(wr*0.88,0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,wr*0.88); ctx.stroke();
+    ctx.fillStyle="#3a3273"; ctx.beginPath(); ctx.arc(0,0,wr*0.16,0,7); ctx.fill();
     ctx.restore();
   }
 
   function draw(ts){
     ctx.clearRect(0,0,W,H);
     const p=skyProgress(), sky=skyAt(p);
-    const g=ctx.createLinearGradient(0,0,0,roadY);
+    const g=ctx.createLinearGradient(0,0,0,horizonY+6);
     g.addColorStop(0, rgbStr(sky.top)); g.addColorStop(1, rgbStr(sky.horizon));
-    ctx.fillStyle=g; ctx.fillRect(0,0,W,roadY);
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,horizonY+6);
 
     const starAlpha=Math.max(0, 1-p*1.3);
     if(starAlpha>0.02){
       ctx.save();
       stars.forEach(s=>{
         const tw = reduceMotion ? 0.7 : .5+Math.abs(Math.sin(ts/900+s.ph))*.5;
-        ctx.globalAlpha=starAlpha*tw;
-        ctx.fillStyle="#fff";
-        ctx.beginPath(); ctx.arc(s.x*W, s.y*H*0.6, s.r,0,7); ctx.fill();
+        ctx.globalAlpha=starAlpha*tw; ctx.fillStyle="#fff";
+        ctx.beginPath(); ctx.arc(s.x*W, s.y*horizonY*0.85, s.r,0,7); ctx.fill();
       });
       ctx.restore();
     }
-
-    drawMoon(W*0.82, H*0.2, H*0.075, Math.max(0,1-p*1.15));
-    if(sunAnimating || sunriseDone) drawSun(W*0.66, roadY, sunProgress);
-
-    drawHills(scroll*0.2);
-    drawMid(scroll*0.5);
-    drawSign();
-    drawRoad(scroll);
-    drawCar(ts);
+    drawMoon(W*0.80, horizonY*0.38, H*0.06, Math.max(0,1-p*1.15));
+    if(sunAnimating || sunriseDone) drawSun(W*0.62, horizonY, sunProgress);
+    drawHills();
+    drawRoadRows();
+    /* world objects far-to-near so closer ones overlap correctly */
+    const objs=[];
+    roadside.forEach(o=>objs.push({z:o.z, fn:()=>drawPole(o)}));
+    if(introSeq) objs.push({z:introSeq.sign.z, fn:()=>drawSignAt(introSeq.sign.z, introSeq.sign.emoji)});
+    if(arrival) objs.push({z:arrival.z, fn:()=>drawSignAt(arrival.z, arrival.emoji)});
+    objs.sort((a,b)=>b.z-a.z).forEach(o=>o.fn());
+    drawCabin();
   }
 
   /* ---------- the one rAF loop ---------- */
@@ -1544,7 +1581,7 @@ const Journey=(function(){
   }
   requestAnimationFrame(frame);
 
-  return { arrive, markVisited };
+  return { arrive, markVisited, beginIntro, introPending };
 })();
 
 /* ---- shared trigger mechanism for the per-card signature fx above ----

@@ -1094,7 +1094,7 @@
       </div>
       <div class="eyebrow" style="color:var(--gold)">The last stop · sunrise</div>
       <h2>Here's to <span id="finaleName">★NAME★</span></h2>
-      <p class="finale-story">Ten stops. One long night. We drove the whole way here — and it's morning now. It was always going to end at you.</p>
+      <p class="finale-story">Eleven stops. One long night. We drove the whole way here — and it's morning now. It was always going to end at you.</p>
       <p id="finaleMsg">★ Your birthday message goes here. Say the real thing — the one you'd never fit on a card. This is the spot she'll remember. ★</p>
       <button class="btn primary" id="fireworks">Light the fireworks 🎆</button>
     </div>
@@ -1138,10 +1138,10 @@ const CONFIG = {
 
   // Wrapped slides — keep them punchy & a little funny
   wrapped: [
-    { kicker:"Chapter One", big:"Another year of<br>being unfairly great", sub:"Officially the most Momo you've ever been. That's saying something.", a:"#3a1e46", b:"#171633" },
+    { kicker:"Chapter Thirty-One", big:"Another year of<br>being unfairly great", sub:"Officially the most Momo you've ever been. That's saying something.", a:"#3a1e46", b:"#171633" },
     { kicker:"Certified", big:"Most likely to<br>light up the room", sub:"You walk in and the room just... adjusts. Everyone knows it, nobody says it. I'm saying it.", a:"#1e3a46", b:"#141a2e" },
-    { kicker:"By the numbers", big:"∞ reasons<br>you're the best", sub:"We ran the numbers. They came back irrational. Fitting, honestly.", a:"#46331e", b:"#1f1a14" },
-    { kicker:"The forecast", big:"Your year ahead:<br>absurdly good", sub:"Skies clear, chaos minimal, good days forecast at 100% with a slight chance of cake.", a:"#2a1e46", b:"#171633" }
+    { kicker:"By the numbers", big:"31 years,<br>∞ reasons you're the best", sub:"We ran the numbers. They came back irrational. Fitting, honestly.", a:"#46331e", b:"#1f1a14" },
+    { kicker:"The forecast", big:"Year 31, ahead:<br>absurdly good", sub:"Skies clear, chaos minimal, good days forecast at 100% with a slight chance of cake.", a:"#2a1e46", b:"#171633" }
   ],
 
   // Compliment machine lines
@@ -1222,7 +1222,7 @@ const CONFIG = {
   easterEgg: "🥚 Secret found! Curiosity confirmed — very on-brand for you, Momo. That's exactly why this exists.",
 
   // Finale
-  finaleMsg: "The world knows you as Avi. I got the better deal — I get Momo. Here's to another year of you being ridiculously, unfairly great at being you. Happy birthday.",
+  finaleMsg: "The world knows you as Avi. I got the better deal — I get Momo. Here's to 31 — another year of you being ridiculously, unfairly great at being you. Happy birthday.",
 
   // Polaroid wall — only real photos show (add more by dropping files in photos/ and
   // listing them here). Family-safe only for now — see privacy note in code.
@@ -1495,6 +1495,18 @@ const Journey=(function(){
   const aviImg=new Image(); let aviImgOk=false;
   aviImg.onload=()=>aviImgOk=true; aviImg.onerror=()=>{aviImgOk=false;};
   aviImg.src="photos/avi-avatar.jpg";
+  /* both portraits are tall (non-square) source images — draw a square,
+     face-centered CROP into the circular seat, not a squashed full-frame
+     stretch. cropTopFrac (0=hug the top of the crop range, 1=hug the bottom)
+     is tuned per-photo since headroom differs between the two portraits. */
+  function drawAvatarCover(img, r, cropTopFrac){
+    const iw=img.naturalWidth||img.width, ih=img.naturalHeight||img.height;
+    if(!iw||!ih) return;
+    const side=Math.min(iw,ih);
+    const maxSy=Math.max(0, ih-side), maxSx=Math.max(0, iw-side);
+    const sy=Math.max(0,Math.min(maxSy, maxSy*cropTopFrac)), sx=maxSx/2;
+    ctx.drawImage(img, sx, sy, side, side, -r, -r, r*2, r*2);
+  }
 
   /* ---------- persisted stop state ---------- */
   let visited=[];
@@ -2407,7 +2419,7 @@ const Journey=(function(){
       ctx.translate(-carW*0.06-(1-slide)*carW*0.12, seatY);
       if(momoImgOk){
         ctx.save(); ctx.beginPath(); ctx.arc(0,0,seatR,0,7); ctx.clip();
-        ctx.drawImage(momoImg,-seatR,-seatR,seatR*2,seatR*2);
+        drawAvatarCover(momoImg, seatR, 0.25);
         ctx.restore();
       } else { ctx.fillStyle="#E8B98C"; ctx.beginPath(); ctx.arc(0,0,seatR,0,7); ctx.fill(); }
       ctx.restore();

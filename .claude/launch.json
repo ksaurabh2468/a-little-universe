@@ -3,9 +3,10 @@
   "configurations": [
     {
       "name": "birthday-universe",
-      "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "5588"],
-      "port": 5588
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "python -m http.server %PORT%"],
+      "port": 5588,
+      "autoPort": true
     }
   ]
 }

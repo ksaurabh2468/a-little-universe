@@ -56,8 +56,17 @@ Two live mirrors, both served from the same `index.html`:
 
 | Target | URL | Update mechanism |
 |---|---|---|
-| Vercel | https://a-little-universe-smoky.vercel.app | `vercel deploy --prod --yes` (run from this repo) |
+| Vercel | https://avi-turns-31.vercel.app (renamed Jul 2026; old https://a-little-universe-smoky.vercel.app still resolves — renaming a Vercel project does not remove its prior domains) | `vercel deploy --prod --yes` (run from this repo) |
 | GitHub Pages | https://ksaurabh2468.github.io/a-little-universe/ | Automatic on `git push origin main` (repo is public; Pages builds off `main` root) |
+
+**Known divergence (Jul 2026):** Vercel is currently AHEAD of GitHub Pages — it has the full
+"Dusk Till Dawn" (ZAYN feat. Sia) mp3 as site-wide background music (`audio/dusk-till-dawn.mp3`,
+`CONFIG.bgMusic`), deployed via the Vercel CLI directly from the working tree. That commit was
+**intentionally not pushed to git** — an automated safety check flagged publishing a full
+unlicensed commercial track to this public repo's git history as out-of-place, and Kumar chose to
+keep it Vercel-only rather than override the block. GitHub Pages still serves the previous
+synthesized ambient loop. Don't "fix" this divergence by pushing the mp3 to git without asking
+Kumar again first — it's a deliberate scope split, not an oversight.
 
 GitHub Pages/CDN caches responses (`Cache-Control: max-age=600`) and takes ~30–40s to rebuild
 after a push — don't mistake a stale cache hit for a failed deploy. Vercel invalidates instantly

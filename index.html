@@ -2428,7 +2428,7 @@ const Journey=(function(){
       ctx.translate(carW*0.10+(1-slide)*carW*0.12, seatY);
       if(aviImgOk){
         ctx.save(); ctx.beginPath(); ctx.arc(0,0,seatR,0,7); ctx.clip();
-        ctx.drawImage(aviImg,-seatR,-seatR,seatR*2,seatR*2);
+        drawAvatarCover(aviImg, seatR, 0);
         ctx.restore();
       } else {
         ctx.fillStyle="#15132c"; ctx.beginPath(); ctx.arc(0,0,seatR,0,7); ctx.fill();

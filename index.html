@@ -287,6 +287,10 @@
   .montage-controls{display:flex;gap:12px;justify-content:center;margin-top:20px;flex-wrap:wrap}
   #montageMusic[aria-pressed="true"]{border-color:var(--mint);color:var(--mint)}
 
+  /* ---------- Spotify embed (mixtape) ---------- */
+  .spotify-embed{max-width:420px;width:100%;margin-top:2px}
+  .spotify-embed iframe{width:100%;display:block;border:0;border-radius:12px}
+
   /* ---------- Finale ---------- */
   .finale{text-align:center;display:grid;gap:18px;place-items:center;padding:20px}
   .finale h2{font-size:clamp(30px,7vw,56px);font-family:var(--display)}
@@ -678,6 +682,7 @@
       <button class="btn primary" id="montageBtn">Play ▶</button>
       <button class="btn" id="montageMusic" aria-pressed="false">Music ♪</button>
     </div>
+    <audio id="montageAudioEl" loop preload="none"></audio>
   </div>
 </section>
 
@@ -719,6 +724,7 @@
       </div>
       <button class="btn primary" id="tapeBtn">Play ▶</button>
       <ul class="tracklist" id="tracklist"></ul>
+      <div id="spotifyEmbed" class="spotify-embed" hidden></div>
       <audio id="tapeAudio" preload="none"></audio>
       <p class="scratch-hint" id="tapeHint">Tap a track to play it 🎧</p>
     </div>
@@ -779,8 +785,14 @@ const CONFIG = {
   // Wheel of Plans — how you might celebrate
   wheel: ["Fancy dinner 🍝","Movie night 🍿","Road trip 🚗","Lazy day in 🛋️","Dessert crawl 🍰","Your call 👑","Stargazing ✨","Surprise! 🎁"],
 
-  // Mixtape — drop an mp3 in audio/ and set `src` (e.g. "audio/track1.mp3") for real
-  // playback; without src, a soft tape melody plays instead. Swap these for her songs.
+  // Real songs (hybrid): paste a Spotify playlist link below for full, legal playback in
+  // the mixtape tab, and drop ONE short clip in audio/ for the montage's background music.
+  // Both are optional — leave "" and the tape melody plays instead.
+  spotify: "",          // e.g. "https://open.spotify.com/playlist/XXXXXXXXXXXX" (plain or /embed/ link)
+  montageAudio: "",     // e.g. "audio/theme-clip.mp3" — a ~30s clip that loops under the film
+
+  // Mixtape liner notes — the on-tape tracklist. Optionally give a track its own `src`
+  // (an mp3 in audio/) to play that one inline; otherwise a soft tape melody plays.
   mixtape: [
     { n:"01", title:"Can't Help Falling in Love", artist:"Elvis Presley" },
     { n:"02", title:"Perfect",                    artist:"Ed Sheeran" },
@@ -1352,17 +1364,27 @@ const Mixtape=(function(){
     if(n<tracks.length){ playTrack(n); } else { stop(); }
   });
   btn.addEventListener("click",toggle);
-  if(!hasAudio && hint) hint.textContent="A soft tape melody for now — drop mp3s in audio/ (and set each track's src) to hear the real songs 🎧";
+  // Spotify: if a playlist link is set, embed it for full, legal playback.
+  (function(){
+    const spot=$("#spotifyEmbed"); if(!spot || !CONFIG.spotify) return;
+    const u=CONFIG.spotify.includes("/embed/") ? CONFIG.spotify
+          : CONFIG.spotify.replace("open.spotify.com/","open.spotify.com/embed/").split("?")[0];
+    spot.innerHTML=`<iframe src="${u}?utm_source=generator" height="352" loading="lazy" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" title="Playlist"></iframe>`;
+    spot.hidden=false;
+    if(hint) hint.textContent="The full playlist's right here — press play on Spotify 🎧";
+  })();
+  if(!hasAudio && !CONFIG.spotify && hint) hint.textContent="A soft tape melody for now — drop mp3s in audio/ (and set each track's src) to hear the real songs 🎧";
   return { reset:()=>{ if(playing) stop(); }, playFirst:()=>{ if(!playing) playTrack(0); }, isPlaying:()=>playing };
 })();
 
 /* ============ CINEMATIC MONTAGE ============ */
 const Montage=(function(){
-  const frame=$("#montageFrame"), capEl=$("#montageCap"), dotsEl=$("#montageDots"), btn=$("#montageBtn"), musicBtn=$("#montageMusic");
+  const frame=$("#montageFrame"), capEl=$("#montageCap"), dotsEl=$("#montageDots"), btn=$("#montageBtn"), musicBtn=$("#montageMusic"), mAudio=$("#montageAudioEl");
   const items=(CONFIG.montage&&CONFIG.montage.length)?CONFIG.montage:CONFIG.polaroids.filter(p=>p.src);
   let cur=0, playing=false, timer=null, slides=[], built=false, musicOn=false;
   function build(){
     if(built||!frame) return;
+    if(CONFIG.montageAudio && mAudio && !mAudio.src) mAudio.src=CONFIG.montageAudio;
     frame.innerHTML=""; dotsEl.innerHTML=""; slides=[];
     items.forEach((it)=>{
       const s=document.createElement("div"); s.className="slide"; s.style.backgroundImage=`url("${it.src}")`;
@@ -1383,7 +1405,11 @@ const Montage=(function(){
   }
   function play(){ if(playing||slides.length<2)return; playing=true; btn.textContent="Pause ⏸"; timer=setInterval(()=>show(cur+1),4500); }
   function pause(){ playing=false; if(btn)btn.textContent="Play ▶"; if(timer){clearInterval(timer);timer=null;} }
-  function setMusic(on){ musicOn=on; musicBtn.setAttribute("aria-pressed",on?"true":"false"); musicBtn.textContent=on?"Music ♪ on":"Music ♪"; if(on) Mixtape.playFirst(); else Mixtape.reset(); }
+  function setMusic(on){
+    musicOn=on; musicBtn.setAttribute("aria-pressed",on?"true":"false"); musicBtn.textContent=on?"Music ♪ on":"Music ♪";
+    if(CONFIG.montageAudio && mAudio){ if(on) mAudio.play().catch(()=>{}); else mAudio.pause(); }
+    else { if(on) Mixtape.playFirst(); else Mixtape.reset(); }
+  }
   function reset(){ build(); pause(); show(0); setMusic(false); }
   btn.addEventListener("click",()=>playing?pause():play());
   musicBtn.addEventListener("click",()=>setMusic(!musicOn));
